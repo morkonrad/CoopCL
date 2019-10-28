@@ -9,6 +9,5 @@ How to build ?
 How to use it ?
 ----------------
 
-
-Publications
+Sections
 --------------
