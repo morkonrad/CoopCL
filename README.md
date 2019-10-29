@@ -146,7 +146,15 @@ Current state
 ----------------
 CoopCL is still in an early stage of development. It can successfully execute many tasks with a variable offload ratio on Intel and AMD platforms, but not yet with NVIDIA GPUs. Current NVIDIA drivers support only OpenCL 1.x. 
 
-The extension for NVIDIA Platforms is in progress.
+The extension for NVIDIA Platforms and multi-GPU is in progress.
+
+**Tested systems:**
+1. Intel+AMD, CPU I7-3930k, GPU R9-290, OS win64, Desktop
+2. Intel, CPU+GPU I7-660U, OS win64, APU mobile Notebook
+3. Intel, CPU+GPU I7-8700, OS win64, APU mobile Notebook
+4. AMD, CPU+GPU R5-2400GE, OS win64, APU mobile Notebook
+5. AMD, R7 2700U, OS win64, APU mobile Notebook
+
 
 
 
