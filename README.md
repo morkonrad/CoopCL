@@ -40,7 +40,7 @@ Check sample usage/application below.
 
 Example:
 ----------------
-The following code executes simple task graph. Tasks B,C are executed asynchronously on CPU and GPU:
+The following code executes simple task graph. Tasks B,C are executed asynchronously and in parallel on CPU and GPU:
 ```cpp
 #include "clDriver.h"
 #include <cassert>
