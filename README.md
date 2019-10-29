@@ -8,12 +8,12 @@ Requierments ?
 
 How to build ?
 ---------------
-  git clone <dst>
-  cd <dst>
-  mkdir build
-  cd build
-  cmake -G"Visual Studio 14 2015 Win64" ..
-  cmake --build . --config Release
+  1. 'git clone' <dst>
+  2. cd <dst>
+  3. mkdir build
+  4. cd build
+  5. cmake -G"Visual Studio 14 2015 Win64" ..
+  6. cmake --build . --config Release
   
   #now after build you can call tests to check if they pass  
   cd clDriver
