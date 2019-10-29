@@ -20,7 +20,7 @@ Requierments ?
 
 How to build ?
 ---------------
-  1. git clone /dst
+  1. git clone CoopCL /dst
   2. cd /dst
   3. mkdir build
   4. cd build
