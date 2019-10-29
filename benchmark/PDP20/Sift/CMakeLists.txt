@@ -14,9 +14,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} PRIVATE ../../../clDriver/lib/)
 target_include_directories(${PROJECT_NAME} PRIVATE ../../CImg)
-if(MSVC)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCL_LIBRARIES})
-endif(MSVC)
+target_link_libraries(${PROJECT_NAME} ${OpenCL_LIBRARIES})
+
 
 if (UNIX)
 target_link_libraries(${PROJECT_NAME} pthread)
