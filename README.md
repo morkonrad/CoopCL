@@ -150,11 +150,11 @@ The extension for NVIDIA Platforms and multi-GPU is in progress.
 
 **Tested systems:**
 
-| HW-Vendor | CPU       | GPU     | OS    | Platform          |
-| --------- | --------- | ------- | ----- | ----------------- |
-| Intel+AMD | I7-3930k  | R9-290  | win64 | Desktop dCPU+dGPU |
-| Intel	    | I7-660U   | HD520   | win64 | Notebook APU      |
-| Intel	    | I7-8700   | HD520   | win64 | Notebook APU      |
-| AMD	    | R5-2400GE | Vega11  | win64 | Notebook APU      |
-| AMD	    | R7-2700U  | Vega10  | win64 | Notebook APU      |
+| HW-Vendor | CPU       | GPU     | GPU-DRiver     | OS    | Platform          |
+| --------- | --------- | ------- | -------------- | ----- | ----------------- |
+| Intel+AMD | I7-3930k  | R9-290  | 2906.10        | win64 | Desktop dCPU+dGPU |
+| Intel	    | I7-660U   | HD-520  | 26.20.100.7158 | win64 | Notebook APU      |
+| Intel	    | I7-8700   | UHD-630 | 26.20.100.7158 | win64 | Notebook APU      |
+| AMD	    | R5-2400GE | Vega-11 | 2639.5         | win64 | Notebook APU      |
+| AMD	    | R7-2700U  | Vega-10 | 2639.5         | win64 | Notebook APU      |
 
