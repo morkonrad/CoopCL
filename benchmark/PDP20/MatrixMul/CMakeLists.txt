@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
 project(MatrixMul)
 
-find_package(OpenCL REQUIRED)
+find_package(OPENCL REQUIRED)
+if(NOT ${OpenCL_VERSION_MAJOR} MATCHES "2")
+message(FATAL_ERROR "OpenCL 2.x not found")
+endif(NOT ${OpenCL_VERSION_MAJOR} MATCHES "2")
+
 find_package(OpenMP REQUIRED)
 
 add_executable(${PROJECT_NAME} main.cpp)
