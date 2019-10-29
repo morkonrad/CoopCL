@@ -4,6 +4,9 @@ What is this ?
 --------------
 
 
+**Features:**
+
+
 Requierments ?
 ---------------
 1. C++14 compiler
@@ -29,11 +32,126 @@ Now after succesfull build you can call unit tests to check if they pass:
   
 How to use it ?
 ----------------
-After successful build and tests, the CoopCL should be ready to go.
+After successful build and tests, the CoopCL should be ready to go. 
 
-It's header only library so yo need to onyl linkit whith your app.
+It's header only library so yo need to only link whith your app.
 
-Check sample usage/application below:
+Check sample usage/application below.
+
+Example:
+----------------
+The following code executes simple task graph. Tasks B,C are exected asynchronously on CPU and GPU:
+```cpp
+#include "clDriver.h"
+#include <cassert>
+#include <iostream>
+#include <stdlib.h>
+
+int main()
+{
+  //Simple task_graph consist of 4 tasks	
+    /*
+    <BEGIN>
+     [A]
+    /   \
+  [B]   [C]
+    \   /
+     [D]
+    <END>
+    */
+    //A = 10 
+    //B(A) = 11 >> B=A+1
+    //C(A) = 12 >> C=A+2
+    //D(B,C) = 23 >> D=B+C	
+
+	constexpr auto tasks = R"(
+  kernel void kA(global int* A)                        
+  {
+  const int tid = get_global_id(0);                                                       
+  A[tid] = 10;
+  }
+
+  kernel void kB(const global int* A,global int* B)                        
+  {
+  const int tid = get_global_id(0);                                                       
+  B[tid] = A[tid]+1;
+  }
+
+  kernel void kC(const global int* A,global int* C)                        
+  {
+  const int tid = get_global_id(0);                                                       
+  C[tid] = A[tid]+2;
+  }
+
+  kernel void kD(const global int* B,
+  const global int* C,global int* D)                        
+  {
+  const int tid = get_global_id(0); 
+  D[tid] = B[tid]+C[tid];
+  }
+  )";
+  
+  coopcl::virtual_device device;	
+  
+  const size_t items = 1024;  
+	auto mA = device.alloc<int>(items);
+	auto mB = device.alloc<int>(items);
+	auto mC = device.alloc<int>(items);
+	auto mD = device.alloc<int>(items);
+
+	coopcl::clTask taskA;
+	device.build_task(taskA, { items, 1, 1 }, tasks, "kA");
+	
+	coopcl::clTask taskB;
+	device.build_task(taskB,{ items,1,1 }, tasks, "kB");
+	taskB.dependence_list().push_back(&taskA);
+
+	coopcl::clTask taskC;
+	device.build_task(taskC,{ items,1,1 }, tasks, "kC");
+	taskC.dependence_list().push_back(&taskA);
+
+	coopcl::clTask taskD;
+	device.build_task(taskD,{ items,1,1 }, tasks, "kD");
+	taskD.dependence_list().push_back(&taskB);
+	taskD.dependence_list().push_back(&taskC);
+
+	const std::array<size_t, 3> ndr = { items,1,1 };
+	const std::array<size_t, 3> wgs = { 16,1,1 };
+	
+	for (int i = 0;i < 10;i++) 
+	{		
+		device.execute_async(taskA, 0.0f, ndr, wgs, mA);
+		device.execute_async(taskB, 0.8f, ndr, wgs, mA, mB);
+		device.execute_async(taskC, 0.5f, ndr, wgs, mA, mC);
+		device.execute_async(taskD, 1.0f, ndr, wgs, mB, mC, mD);
+		taskD.wait();
+	}
+	
+	for (int i = 0;i < items;i++)
+	{
+		const auto val = mD->at<int>(i);
+		if (val != 23)
+		{
+			std::cerr << "Some error at pos i = " << i << std::endl;
+			return -1;
+		}
+	}
+
+	std::cout << "Passed,ok!" << std::endl;
+	return 0;
+}
+```
+
+Current state
+----------------
+CoopCL is still in an early stage of development. It can successfully execute many tasks with a variable offload ratio on Intel and AMD platforms, but not yet with NVIDIA GPUs. Current NVIDIA drivers support only OpenCL 1.x. 
+
+The extension for NVIDIA Platforms is in progress.
+
+
+
+
+
 
 
 
