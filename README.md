@@ -91,54 +91,54 @@ int main()
   }
   )";
   
-  coopcl::virtual_device device;	
+coopcl::virtual_device device;	
   
-  const size_t items = 1024;  
-	auto mA = device.alloc<int>(items);
-	auto mB = device.alloc<int>(items);
-	auto mC = device.alloc<int>(items);
-	auto mD = device.alloc<int>(items);
+const size_t items = 1024;  
+auto mA = device.alloc<int>(items);
+auto mB = device.alloc<int>(items);
+auto mC = device.alloc<int>(items);
+auto mD = device.alloc<int>(items);
 
-	coopcl::clTask taskA;
-	device.build_task(taskA, { items, 1, 1 }, tasks, "kA");
+coopcl::clTask taskA;
+device.build_task(taskA, { items, 1, 1 }, tasks, "kA");
 	
-	coopcl::clTask taskB;
-	device.build_task(taskB,{ items,1,1 }, tasks, "kB");
-	taskB.dependence_list().push_back(&taskA);
+coopcl::clTask taskB;
+device.build_task(taskB,{ items,1,1 }, tasks, "kB");
+taskB.dependence_list().push_back(&taskA);
 
-	coopcl::clTask taskC;
-	device.build_task(taskC,{ items,1,1 }, tasks, "kC");
-	taskC.dependence_list().push_back(&taskA);
+coopcl::clTask taskC;
+device.build_task(taskC,{ items,1,1 }, tasks, "kC");
+taskC.dependence_list().push_back(&taskA);
 
-	coopcl::clTask taskD;
-	device.build_task(taskD,{ items,1,1 }, tasks, "kD");
-	taskD.dependence_list().push_back(&taskB);
-	taskD.dependence_list().push_back(&taskC);
+coopcl::clTask taskD;
+device.build_task(taskD,{ items,1,1 }, tasks, "kD");
+taskD.dependence_list().push_back(&taskB);
+taskD.dependence_list().push_back(&taskC);
 
-	const std::array<size_t, 3> ndr = { items,1,1 };
-	const std::array<size_t, 3> wgs = { 16,1,1 };
+const std::array<size_t, 3> ndr = { items,1,1 };
+const std::array<size_t, 3> wgs = { 16,1,1 };
 	
-	for (int i = 0;i < 10;i++) 
-	{		
-		device.execute_async(taskA, 0.0f, ndr, wgs, mA);
-		device.execute_async(taskB, 0.8f, ndr, wgs, mA, mB);
-		device.execute_async(taskC, 0.5f, ndr, wgs, mA, mC);
-		device.execute_async(taskD, 1.0f, ndr, wgs, mB, mC, mD);
-		taskD.wait();
-	}
+for (int i = 0;i < 10;i++) 
+{		
+	device.execute_async(taskA, 0.0f, ndr, wgs, mA); //100% CPU
+	device.execute_async(taskB, 0.8f, ndr, wgs, mA, mB); //80% GPU, 20 % CPU
+	device.execute_async(taskC, 0.5f, ndr, wgs, mA, mC); //50% GPU, 50 % CPU
+	device.execute_async(taskD, 1.0f, ndr, wgs, mB, mC, mD); //100% GPU
+	taskD.wait();
+}
 	
-	for (int i = 0;i < items;i++)
+for (int i = 0;i < items;i++)
+{
+	const auto val = mD->at<int>(i);
+	if (val != 23)
 	{
-		const auto val = mD->at<int>(i);
-		if (val != 23)
-		{
-			std::cerr << "Some error at pos i = " << i << std::endl;
-			return -1;
-		}
+		std::cerr << "Some error at pos i = " << i << std::endl;
+		return -1;
 	}
+}
 
-	std::cout << "Passed,ok!" << std::endl;
-	return 0;
+std::cout << "Passed,ok!" << std::endl;
+return 0;
 }
 ```
 
