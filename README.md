@@ -2,10 +2,10 @@
 
 What is this ? 
 --------------
-It's header only library that supports collaborative CPU-GPU workload processing. 
+It's header only library that supports collaborative CPU-GPU workload processing. It enables parallel and asynchronous tasks execution described by the task graph.
 
 **Features:**
-1. Task graph API
+1. Task graph API+Runtime
 2. Parallel+asynchronous tasks/kernels execution on CPU+GPU
 3. Variable workload splitting, partial offload to GPU
 4. Support for dCPUs+dGPUs and APUs
