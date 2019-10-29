@@ -2,10 +2,13 @@
 
 What is this ? 
 --------------
-
+It's header only library that supports collaborative CPU-GPU wokrolad processing. 
 
 **Features:**
-
+1. Task graph API
+2. Parallel+asynchronous tasks/kernels execution on CPU+GPU
+3. Variable workload splitting, partial offload to GPU
+4. Support for dCPUs+dGPUs and APUs
 
 Requierments ?
 ---------------
