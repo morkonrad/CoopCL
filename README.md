@@ -15,7 +15,7 @@ Requierments ?
 1. C++14 compiler
 2. CMake 3.x
 3. OpenCL 2.x headers and lib, support for CPU and GPU
-3. Graphic driver with OpenCL and SVM_FINE_GRAIN_BUFFER support
+3. GPU driver with OpenCL and SVM_FINE_GRAIN_BUFFER support
 4. For unit-tests Ctest
 
 How to build ?
