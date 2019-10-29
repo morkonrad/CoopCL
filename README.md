@@ -18,18 +18,20 @@ How to build ?
   2. cd /dst
   3. mkdir build
   4. cd build
-  5. cmake -G"Visual Studio 14 2015 Win64" .. (Visual Studio 2015 is a minimal tested version, older version not tested yet)
+  5. cmake -G"Visual Studio 14 2015 Win64" .. 
   6. cmake --build . --config Release
   
-  Now after succesfull build you can call unit tests to check if they pass:  
-  cd /clDriver
-  ctest 
+For Windows, Visual Studio 2015 is a minimal tested version. For Linux it's tested with GCC 7.0 and clang 5.0. All compilers need to support C++14. 
+
+Now after succesfull build you can call unit tests to check if they pass:  
+ 1. cd /clDriver
+ 2. ctest 
   
 How to use it ?
 ----------------
 After successful build and tests, the CoopCL should be ready to go.
 
-It's header only library so yo can link/use it whatever you want.
+It's header only library so yo need to onyl linkit whith your app.
 
 Check sample usage/application below:
 
