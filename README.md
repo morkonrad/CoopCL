@@ -149,11 +149,12 @@ CoopCL is still in an early stage of development. It can successfully execute ma
 The extension for NVIDIA Platforms and multi-GPU is in progress.
 
 **Tested systems:**
+
 | HW-Vendor | CPU       | GPU     | OS    | Platform          |
 | --------- | --------- | ------- | ----- | ----------------- |
-| Intel+AMD | I7-3930k  | R9-290  | win64 | dCPU+dGPU Desktop |
-| Intel	    | I7-660U   | HD520   | win64 | APU Notebook      |
-| Intel	    | I7-8700   | HD520   | win64 | APU Notebook      |
-| AMD	    | R5-2400GE | Vega11  | win64 | APU Notebook      |
-| AMD	    | R7-2700U  | Vega10  | win64 | APU Notebook      |
+| Intel+AMD | I7-3930k  | R9-290  | win64 | Desktop dCPU+dGPU |
+| Intel	    | I7-660U   | HD520   | win64 | Notebook APU      |
+| Intel	    | I7-8700   | HD520   | win64 | Notebook APU      |
+| AMD	    | R5-2400GE | Vega11  | win64 | Notebook APU      |
+| AMD	    | R7-2700U  | Vega10  | win64 | Notebook APU      |
 
