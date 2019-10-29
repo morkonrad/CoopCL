@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
 project(test_native_cl_driver)
 
-find_package(OPENCL REQUIRED)
+find_package(OpenCL REQUIRED)
 if(NOT ${OpenCL_VERSION_MAJOR} MATCHES "2")
 message(FATAL_ERROR "OpenCL 2.x not found")
 endif(NOT ${OpenCL_VERSION_MAJOR} MATCHES "2")
