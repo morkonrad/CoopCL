@@ -29,7 +29,7 @@ How to build ?
   
 For Windows, Visual Studio 2015 is a minimal tested version. For Linux it's tested with GCC 7.0 and Clang 5.0. In generall, compiler need to support C++14. 
 
-Now after succesfull build you can call unit tests to check if they pass:  
+After succesfull build you can call unit tests to check if they pass:  
  1. cd /clDriver
  2. ctest 
   
