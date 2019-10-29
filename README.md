@@ -153,7 +153,7 @@ The extension for NVIDIA Platforms and multi-GPU is in progress.
 
 **Tested systems:**
 
-| HW-Vendor | CPU       | GPU     | GPU-DRiver     | OS    | Platform          |
+| HW-Vendor | CPU       | GPU     | GPU-Driver     | OS    | Platform          |
 | --------- | --------- | ------- | -------------- | ----- | ----------------- |
 | Intel+AMD | I7-3930k  | R9-290  | 2906.10        | win64 | Desktop dCPU+dGPU |
 | Intel	    | I7-660U   | HD-520  | 26.20.100.7158 | win64 | Notebook APU      |
