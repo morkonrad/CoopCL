@@ -869,7 +869,7 @@ int main(int argc,char** argv)
 	const auto app_init_start = std::chrono::system_clock::now();
 	
 	using namespace cimg_library;
-	const auto img = "c:/Users/morkon/Pictures/lena.bmp";
+	const auto img = "c:/Users/morkon/Pictures/2k.bmp";
 	CImg<unsigned char> image(img);
 	const int width = image.width();
 	const int height = image.height();	
