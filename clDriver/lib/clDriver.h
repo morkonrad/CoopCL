@@ -554,14 +554,14 @@ namespace coopcl
 			const auto last_offload = std::get<0>(tuple);
 
 			const auto cpu_duration_n_1 = std::get<1>(tuple);
-			if (cpu_duration_n_1 == 0)return 0.5f;
+			if (cpu_duration_n_1 == 0)return 1.0f;
 
 			const auto gpu_duration_n_1 = std::get<2>(tuple);
-			if (gpu_duration_n_1 == 0)return 0.5f;
+			if (gpu_duration_n_1 == 0)return 0.0f;
 
 			float updated_offload = 0;
 			const auto ratio = cpu_duration_n_1 / gpu_duration_n_1;
-			if (std::fabs(1.0 - ratio) < 0.1)
+			if (std::fabs(1.0 - ratio) < 0.125)
 				updated_offload = last_offload;
 			else
 				updated_offload = ratio < 1.0 ? last_offload - 0.0125f*ratio : ratio > 1.0 ? last_offload + 0.0125f*ratio : last_offload;
@@ -571,6 +571,7 @@ namespace coopcl
 
 			return updated_offload;
 		}
+
 		std::string offload_str(const float off)
 		{
 			const int proc = static_cast<int>(off*100.0);
