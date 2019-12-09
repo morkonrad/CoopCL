@@ -53,7 +53,7 @@ namespace clArgInfo
 	}
 
 	std::vector<int8_t>
-		get_value(const std::string &type, const double init_value)
+		get_byte_value(const std::string &type, const double init_value)
 	{
 		std::vector<int8_t> bytes;
 		if (type.empty())return bytes;
@@ -368,8 +368,7 @@ namespace coopcl
 		std::mutex _observation_mutex;
 		
 		//event in cpu context
-		cl::Event _cpu_ready;
-		
+		cl::Event _cpu_ready;		
 		//_gpu_ready associated via callback with ctx_cpu
 		cl::UserEvent _gpu_ready_cpu_ctx;
 		
@@ -417,7 +416,7 @@ namespace coopcl
 
 			}
 
-			for (size_t id = 0;id < args;id++)
+			for (cl_uint id = 0;id < args;id++)
 			{
 				const size_t aq = k->getArgInfo<CL_KERNEL_ARG_ADDRESS_QUALIFIER>(id, &err);
 				if (err != CL_SUCCESS) {
@@ -448,7 +447,7 @@ namespace coopcl
 
 				size_t type_size = clArgInfo::get_size(type_name);
 
-				_arg_infos.push_back(arg_info{ type_name,type_size,aq,tq });
+				_arg_infos.push_back(arg_info{ type_name,type_size,aq,(size_t)tq });
 			}
 
 			return 0;
@@ -493,7 +492,7 @@ namespace coopcl
 
 		const cl::Kernel* kernel_cpu()const { return &_kernel_cpu; }
 		const cl::Kernel* kernel_gpu()const { return &_kernel_gpu; }
-
+		
 		cl::Event* cpu_ready(){ return &_cpu_ready; }
 		cl::Event* gpu_ready(){ return &_gpu_ready; }
 
@@ -501,10 +500,26 @@ namespace coopcl
 		const cl::Event* gpu_ready()const { return &_gpu_ready; }
 
 		const cl::UserEvent* cpu_user_ready_ctx_gpu()const { return &_cpu_ready_gpu_ctx; }
-		const cl::UserEvent* gpu_user_ready_ctx_cpu()const { return &_gpu_ready_cpu_ctx; }
+		const cl::UserEvent* gpu_user_ready_ctx_cpu()const { return &_gpu_ready_cpu_ctx; }		
+
+		float get_mean_exec_time() 
+		{
+			float mean_exec_time_cpu_gpu = 0.0f;
+			size_t obs_id = 1;
+			for (auto& obs : _previous_observation)
+			{
+				const auto cpu_time = std::get<1>(obs);
+				const auto gpu_time = std::get<2>(obs);
+				mean_exec_time_cpu_gpu = cpu_time + gpu_time;
+				obs_id++;
+			}
+			_previous_observation.clear();
+			mean_exec_time_cpu_gpu = mean_exec_time_cpu_gpu / obs_id;
+			return mean_exec_time_cpu_gpu;
+		}
 
 		int create_cpu_user_ready_ctx_gpu(const float offload)
-		{
+		{			
 			int err = 0;
 			if (_cpu_ready_gpu_ctx() != nullptr)
 			{				
@@ -518,7 +533,7 @@ namespace coopcl
 		}
 		
 		int create_gpu_user_ready_ctx_cpu(const float offload)
-		{
+		{			
 			int err = 0;
 			if (_gpu_ready_cpu_ctx() != nullptr)
 			{						
@@ -556,26 +571,57 @@ namespace coopcl
 
 			return updated_offload;
 		}
+		std::string offload_str(const float off)
+		{
+			const int proc = static_cast<int>(off*100.0);
+			std::stringstream str;
+			str << "Offload to GPU " << std::to_string(proc) << "%";
+			return str.str();
+		}
 
 		void set_async_task_duration(cl_event ev, const double duartion)
 		{
 			std::lock_guard<std::mutex> guard(_observation_mutex);
 
 			if (ev == _cpu_ready())							
-				_execution_time_cpu_msec=duartion;							
+				_execution_time_cpu_msec = duartion;							
 			else if (ev == _gpu_ready())			
 				_execution_time_gpu_msec = duartion;						
 										
 #ifdef _OPT_OFFLOAD
 			if (_counter_log > _log_depth-1)_counter_log = 0;
-
 			//std::tuple 1: offload, 2: cpu_duration, 3: gpu_duration
-			_previous_observation[_counter_log++] = { _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec };			
+			if (_last_offload == 0.0 || _last_offload == 1.0)
+			{
+				_previous_observation[_counter_log++] = { _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec };
+				//std::cout << "off:\t" << _last_offload << " cpu:\t" << _execution_time_cpu_msec << "[ms] gpu:\t" << _execution_time_gpu_msec << "[ms]" << std::endl;
+				_execution_time_cpu_msec = 0;
+				_execution_time_gpu_msec = 0;
+			}
+			else if (_execution_time_cpu_msec > 0 && _execution_time_gpu_msec > 0)
+			{
+				_previous_observation[_counter_log++] = { _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec };
+				//std::cout << "off:\t" << _last_offload << " cpu:\t" << _execution_time_cpu_msec << "[ms] gpu:\t" << _execution_time_gpu_msec << "[ms]" << std::endl;
+				_execution_time_cpu_msec = 0;
+				_execution_time_gpu_msec = 0;
+			}			
 #else
-			//std::tuple 1: offload, 2: cpu_duration, 3: gpu_duration			
-			_previous_observation.push_back({ _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec });
-#endif
-			
+			//std::tuple 1: offload, 2: cpu_duration, 3: gpu_duration		
+			if (_last_offload == 0.0 || _last_offload == 1.0)
+			{
+				_previous_observation.push_back({ _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec });
+				//std::cout << offload_str(_last_offload) << " cpu: " << _execution_time_cpu_msec << "[ms] gpu: " << _execution_time_gpu_msec << "[ms]" << std::endl;
+				_execution_time_cpu_msec = 0;
+				_execution_time_gpu_msec = 0;
+			}
+			else if (_execution_time_cpu_msec > 0 && _execution_time_gpu_msec > 0)
+			{
+				_previous_observation.push_back({ _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec });
+				//std::cout << offload_str(_last_offload) << " cpu: " << _execution_time_cpu_msec << "[ms] gpu: " << _execution_time_gpu_msec << "[ms]" << std::endl;
+				_execution_time_cpu_msec = 0;
+				_execution_time_gpu_msec = 0;
+			}			
+#endif			
 		}
 
 		int set_async_event_user_complete(cl_event ev)
@@ -638,9 +684,10 @@ namespace coopcl
 			return clArgInfo::isFloat(_arg_infos[id]._type_name);
 		}
 
-		std::vector<std::int8_t> get_init_arg_value(const size_t id, const float val)const
+		std::vector<std::int8_t> 
+			get_init_arg_value(const size_t id, const float val)const
 		{
-			return clArgInfo::get_value(_arg_infos[id]._type_name, val);
+			return clArgInfo::get_byte_value(_arg_infos[id]._type_name, val);
 		}
 
 		int wait()const 
@@ -698,19 +745,13 @@ namespace coopcl
 	};
 
 	static void CL_CALLBACK user_ev_handler(cl_event ev, cl_int stat, void* user_data)
-	{		
+	{	
+		int err = 0;
 		auto ptr_Task = (clTask*)(user_data);
 		if (ptr_Task == nullptr) {
 			std::cerr << "Async_callback: couldn't read clTask, fixme!" << std::endl;
 			return;
 		}
-
-		auto err = ptr_Task->set_async_event_user_complete(ev);
-		if (err != 0) {
-			on_cl_error(err);
-			std::cerr << "Async_callback: couldn't set user_event status, fixme!" << std::endl;
-		}
-
 #ifdef _PROFILE_
 			cl_ulong start = 0, end = 0;
 			err = clGetEventProfilingInfo(ev , CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start,0);
@@ -720,6 +761,11 @@ namespace coopcl
 			const auto duration = (cl_double)(end - start)*(cl_double)(1e-06);
 			ptr_Task->set_async_task_duration(ev, duration);
 #endif
+			err = ptr_Task->set_async_event_user_complete(ev);
+			if (err != 0) {
+				on_cl_error(err);
+				std::cerr << "Async_callback: couldn't set user_event status, fixme!" << std::endl;
+			}
 	}
 
 	class clMemory
@@ -935,8 +981,8 @@ namespace coopcl
 		generic_arg(
 			std::unique_ptr<coopcl::clMemory> clmem,
 			std::vector<std::uint8_t> arg_val,
-			bool isReadOnly,
-			bool isLocalMem)
+			bool isReadOnly=true,
+			bool isLocalMem=false)
 		{
 			_clmem = std::move(clmem);
 			_arg_val = arg_val;
@@ -978,9 +1024,17 @@ namespace coopcl
 			{
 				if (arg._clmem != nullptr)
 				{
-					cl_mem  app_cl_mem = arg._clmem->get_mem(ctx);
-					err = clSetKernelArg(k, id++, sizeof(cl_mem), &app_cl_mem);
-					if (err != 0)return err;					
+					if (arg._isLocalMem)
+					{
+						err = clSetKernelArg(k, id++, arg._clmem->size(), nullptr);
+						if (err != 0)return err;
+					}
+					else
+					{
+						cl_mem  app_cl_mem = arg._clmem->get_mem(ctx);
+						err = clSetKernelArg(k, id++, sizeof(cl_mem), &app_cl_mem);
+						if (err != 0)return err;
+					}
 				}
 				else
 				{
@@ -1111,7 +1165,7 @@ namespace coopcl
 			_max_work_group_size = _device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(&err);
 			on_cl_error(err);
 
-			_hasUnified_mem = _device.getInfo<CL_DEVICE_HOST_UNIFIED_MEMORY>(&err);
+			//_hasUnified_mem = _device.getInfo<CL_DEVICE_HOST_UNIFIED_MEMORY>(&err);
 			on_cl_error(err);			
 
 			if (_dev_type == CL_DEVICE_TYPE_GPU)
@@ -1226,9 +1280,10 @@ namespace coopcl
 				}
 			}
 
-			if (_qid >= _queues.size())_qid = 0;            			
-			err = _queues[_qid].enqueueNDRangeKernel(*kernel, offset, global, local, &wait_list, event_wait);
-			//err = _queues[_qid].enqueueNDRangeKernel(*kernel, offset, global, local, nullptr, event_wait);
+			if (_qid >= _queues.size())_qid = 0;            		
+			//std::cout << "{gx,gy,gz}{" << global[0] << "," << global[1] << "," << global[2] << "}\n";
+			//std::cout << "{lx,ly,lz}{" << local[0] << "," << local[1] << "," << local[2] << "}\n";
+			err = _queues[_qid].enqueueNDRangeKernel(*kernel, offset, global, local, &wait_list, event_wait);			
 			on_cl_error(err);
 						
 			if (_dev_type == CL_DEVICE_TYPE_CPU)
@@ -1243,8 +1298,7 @@ namespace coopcl
 			}
 			
 			//Set host_async_event_callback			
-			event_wait->setCallback(CL_COMPLETE, &user_ev_handler, &task);	 
-			
+			event_wait->setCallback(CL_COMPLETE, &user_ev_handler, &task);			
 			return _queues[_qid++].flush();
 
 		}
@@ -1312,9 +1366,8 @@ namespace coopcl
 	class virtual_device
 	{
 
-	private:		
-		
-		//different context cpu, gpu		
+	private:				
+		//different cpu, gpu context 		
 		const cl::Context* _ctx_cpu{ nullptr };
 		const cl::Context* _ctx_gpu{ nullptr };
 
@@ -1349,8 +1402,8 @@ namespace coopcl
 			size_t items_gpu = static_cast<size_t>((procent * one_item) < dim_split ? ceil(procent * one_item) : dim_split);
 			size_t items_cpu = dim_split - items_gpu;
 
-			if (items_cpu < 8) { return 1; }//no offload/data-split, workload too small
-			if (items_gpu < 8) { return 1; }//no offload/data-split, workload too small
+			if (items_cpu < 4) { return 1; }//no offload/data-split, workload too small
+			if (items_gpu < 4) { return 1; }//no offload/data-split, workload too small
 
 			//------------------------------------------
 			//group_sizes + global_sizes extend/pad
@@ -1674,7 +1727,6 @@ namespace coopcl
 			{
 				cl::NDRange gcpu, ggpu, offset, loc_cpu, loc_gpu;
 				const auto res = divide_ndranges(offload, global_in, local_in, gcpu, ggpu, offset, loc_cpu, loc_gpu);
-
 				if (res == -1) { return CL_INVALID_OPERATION; }
 
 				else if (res == 1) //workload remainder is to small to execute on both devices
@@ -1742,6 +1794,7 @@ namespace coopcl
 			std::memset(&dummy_zero, 0, sizeof(T));
 			return std::unique_ptr<clMemory>(new clMemory(*_ctx_cpu,*_ctx_gpu, items, dummy_zero, read_only));
 		}
+		
 		//allocate and initialize with val
 		template<typename T>
 		std::unique_ptr<clMemory>
