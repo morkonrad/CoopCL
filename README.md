@@ -8,7 +8,7 @@ It's header only library that supports collaborative CPU-GPU workload processing
 1. Task graph API+Runtime
 2. Parallel+asynchronous tasks/kernels execution on CPU+GPU
 3. Variable workload splitting, partial offload to GPU
-4. Support for dCPUs+dGPUs and APUs
+4. Support for APUs and CPUs+dGPUs
 
 Requierments ?
 ---------------
@@ -27,7 +27,7 @@ How to build ?
   5. cmake -G"Visual Studio 14 2015 Win64" .. 
   6. cmake --build . --config Release
   
-For Windows, Visual Studio 2015 is a minimal tested version. For Linux it's tested with GCC 7.0 and Clang 5.0. In generall, compiler need to support C++14. 
+For Windows, Visual Studio 2015 is a minimal tested version. For Linux it's tested with GCC 7.0 and Clang 5.0. In general, compiler must support C++14. 
 
 After succesfull build you can call unit tests to check if they pass:  
  1. cd /clDriver
