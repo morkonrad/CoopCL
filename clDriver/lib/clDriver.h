@@ -217,8 +217,7 @@ namespace coopcl
 
         if (sflag.empty())return sflag;
         return ((caps & iflag) == iflag) ? sflag : "";
-
-        return "";
+        //return "";
 	};
 
 	static std::string err_msg(const int err)
@@ -477,9 +476,6 @@ namespace coopcl
 			_kernel_gpu = kernel_gpu;
 			_ctx_gpu = _kernel_gpu.getInfo<CL_KERNEL_CONTEXT>(&err);
 			if (err != 0)return err;
-#ifdef _OPT_OFFLOAD
-			_previous_observation.resize(_log_depth);
-#endif
 
 			return build_args_info(&_kernel_cpu);
 		}
@@ -546,9 +542,11 @@ namespace coopcl
 			return err;
 		}			
 		
-		float update_offload()const
+		float update_offload()//const
 		{
-			if (_previous_observation.empty())return 0.5f;
+			if (_previous_observation.empty()) {
+				return 0.5f;
+			}
 
 			const auto tuple = _previous_observation.back();
 			const auto last_offload = std::get<0>(tuple);
@@ -589,24 +587,6 @@ namespace coopcl
 			else if (ev == _gpu_ready())			
 				_execution_time_gpu_msec = duartion;						
 										
-#ifdef _OPT_OFFLOAD
-			if (_counter_log > _log_depth-1)_counter_log = 0;
-			//std::tuple 1: offload, 2: cpu_duration, 3: gpu_duration
-			if (_last_offload == 0.0 || _last_offload == 1.0)
-			{
-				_previous_observation[_counter_log++] = { _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec };
-				//std::cout << "off:\t" << _last_offload << " cpu:\t" << _execution_time_cpu_msec << "[ms] gpu:\t" << _execution_time_gpu_msec << "[ms]" << std::endl;
-				_execution_time_cpu_msec = 0;
-				_execution_time_gpu_msec = 0;
-			}
-			else if (_execution_time_cpu_msec > 0 && _execution_time_gpu_msec > 0)
-			{
-				_previous_observation[_counter_log++] = { _last_offload,_execution_time_cpu_msec,_execution_time_gpu_msec };
-				//std::cout << "off:\t" << _last_offload << " cpu:\t" << _execution_time_cpu_msec << "[ms] gpu:\t" << _execution_time_gpu_msec << "[ms]" << std::endl;
-				_execution_time_cpu_msec = 0;
-				_execution_time_gpu_msec = 0;
-			}			
-#else
 			//std::tuple 1: offload, 2: cpu_duration, 3: gpu_duration		
 			if (_last_offload == 0.0 || _last_offload == 1.0)
 			{
@@ -622,7 +602,6 @@ namespace coopcl
 				_execution_time_cpu_msec = 0;
 				_execution_time_gpu_msec = 0;
 			}			
-#endif			
 		}
 
 		int set_async_event_user_complete(cl_event ev)
@@ -1282,8 +1261,10 @@ namespace coopcl
 			}
 
 			if (_qid >= _queues.size())_qid = 0;            		
-			//std::cout << "{gx,gy,gz}{" << global[0] << "," << global[1] << "," << global[2] << "}\n";
-			//std::cout << "{lx,ly,lz}{" << local[0] << "," << local[1] << "," << local[2] << "}\n";
+#ifdef _DEBUG
+			std::cout << "{gx,gy,gz}{" << global[0] << "," << global[1] << "," << global[2] << "}\n";
+			std::cout << "{lx,ly,lz}{" << local[0] << "," << local[1] << "," << local[2] << "}\n";
+#endif
 			err = _queues[_qid].enqueueNDRangeKernel(*kernel, offset, global, local, &wait_list, event_wait);			
 			on_cl_error(err);
 						
@@ -1779,7 +1760,6 @@ namespace coopcl
 			return err;
 		}
 		
-
 		std::unique_ptr<clMemory>
 		alloc(const size_t items, const bool read_only = false)
 		{
@@ -1803,6 +1783,7 @@ namespace coopcl
 		{
 			return std::unique_ptr<clMemory>(new clMemory(*_ctx_cpu, *_ctx_gpu, items, val, read_only));
 		}
+		
 		//allocate and copy from src
 		template<typename T>
 		std::unique_ptr<clMemory>

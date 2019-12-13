@@ -6,7 +6,7 @@
 #include <thread>
 #include <fstream>
 
-//#define _DUMP_
+#define _DUMP_
 
 namespace SIFT_tasks 
 {	
@@ -475,8 +475,6 @@ class sift_octave
 		size_t  features = 0;
 
 		_task_Color.wait();
-
-		
 		
 		std::cout << "visualize ..." << std::endl;
 		std::vector < std::uint8_t> img8b;
@@ -515,15 +513,14 @@ class sift_octave
 	
 	int reset(coopcl::virtual_device& device,const float offload)
 	{
-		int err;
+		
 		for (int i = 0; i < _SIFT_INTVLS; i++)
 		{
 			auto ptr = (std::uint32_t*)_counter_kp[i]->data();
 			*ptr = 0;
 		}		
 
-		err = device.execute_async(_task_Reset, offload, { _max_features,1,1 }, { 1,1,1 }, _kp_detector);
-		if (err != 0)return err;
+		return device.execute_async(_task_Reset, offload, { _max_features,1,1 }, { 1,1,1 }, _kp_detector);		
 	}
 	
 	std::string 
@@ -781,7 +778,7 @@ class sift_octave
 				_counter_kp[i32scale_id-1], i32w, i32h, i32scale_id, i32ocatve_id, _max_features);
 			if (err != 0)return err;
 		}		
-
+		
 		return err;
 	}
 
@@ -900,10 +897,10 @@ int main(int argc,char** argv)
 	std::vector<std::unique_ptr<sift_octave>> octaves;
 
 	octaves.push_back(std::make_unique<sift_octave>(0, width, height, tasks.str(), device, input_color_image));	
-	octaves.push_back(std::make_unique<sift_octave>(1, width, height, tasks.str(), device));
+	/*octaves.push_back(std::make_unique<sift_octave>(1, width, height, tasks.str(), device));
 	octaves.push_back(std::make_unique<sift_octave>(2, width, height, tasks.str(), device));
 	octaves.push_back(std::make_unique<sift_octave>(3, width, height, tasks.str(), device));
-	octaves.push_back(std::make_unique<sift_octave>(4, width, height, tasks.str(), device));
+	octaves.push_back(std::make_unique<sift_octave>(4, width, height, tasks.str(), device));*/
 		
 	//Call task_graph
 #ifdef _DUMP_
@@ -919,10 +916,10 @@ int main(int argc,char** argv)
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 
 	const auto app_init_end = std::chrono::system_clock::now();
-	const auto et = std::chrono::duration_cast<std::chrono::milliseconds>(app_init_end - app_init_start).count();
+	const auto et_init = std::chrono::duration_cast<std::chrono::milliseconds>(app_init_end - app_init_start).count();
 
 #ifndef _DUMP_
-	std::cout<< et << std::endl;
+	std::cout<< et_init << std::endl;
 #endif
 
 	//for (const auto offload : offloads)
