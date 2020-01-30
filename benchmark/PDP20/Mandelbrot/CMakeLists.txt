@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
-project(mandelbrot_app)
+project(Mandelbrot_app)
 
 find_package(OpenCL REQUIRED)
 if(NOT ${OpenCL_VERSION_MAJOR} MATCHES "2")

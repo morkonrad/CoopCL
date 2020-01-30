@@ -182,7 +182,12 @@ pre_process_kernel_func(std::string &source) {
 * And cut from	the source a kernel function
 */
 std::string
-cut_kernel_function(std::string &source) {
+cut_kernel_function(std::string &source) 
+{
+    // Warning: 
+    // This algorithm cuts text between apperance of kernel or __kernel 
+    // and a next apperance of kernel or __kernel !!
+   
     std::string before = "__kernel";
     std::string after = "__kernel";
 
@@ -222,6 +227,59 @@ cut_kernel_function(std::string &source) {
     return target;
 }
 
+std::string
+insert_global_size_guard_and_args(
+    const std::string& source,
+    const std::array < std::string, 3 > & global_size_args)
+{
+    std::string target = source;
+    std::stringstream global_size_assertion,global_size_arg_asserts;
+    
+    global_size_assertion << "if( get_global_id(0) >= " << global_size_args[0] << " )return;\n";
+    global_size_assertion << "if( get_global_id(1) >= " << global_size_args[1] << " )return;\n";
+    global_size_assertion << "if( get_global_id(2) >= " << global_size_args[2] << " )return;\n";
+
+    global_size_arg_asserts 
+        << "const int " << global_size_args[0] << " ,"
+        << "const int " << global_size_args[1] << " ,"
+        << "const int " << global_size_args[2] << " ,";
+
+    auto find_and_insert = []( 
+        const std::stringstream& asserts,
+        const std::string token_after_kernel,
+        const std::string input)->std::string
+    {
+        std::string before = "__kernel";
+        std::string output = input;
+        // search for __kernel or kernel token
+        // and append/insert the asserts
+        auto beg = output.find(before);
+        if (beg == std::string::npos) {
+            before = "kernel";
+            beg = output.find(before);
+        }
+        if (beg == std::string::npos)
+            return "";
+
+        auto end = output.find(token_after_kernel, beg + before.size());
+        if (end == std::string::npos)
+            return "";
+
+        output.insert(end + 1, asserts.str());
+
+        return output;
+    }; 
+
+    //Find function call and a '(' bracket with args
+    //Then append as a first args global_size_arg_asserts
+    target = find_and_insert(global_size_arg_asserts, "(", target);
+    
+    //Find a kernel_function call and a '{' bracket with function body 
+    //Then append as global_size_assertion
+    target = find_and_insert(global_size_assertion, "{", target);
+    
+    return target;
+}
 /**
 * search for the template: _kernel void ...{ or kernel void ...{
 * and insert the global_size_assertion
@@ -258,6 +316,7 @@ insert_global_size_guard(const std::string &source,
     std::string after = "{";
 
     // search for __kernel or kernel tag
+    // and append/insert the global_size_assertion
     auto beg = target.find(before);
     if (beg == std::string::npos) {
         before = "kernel";
@@ -343,6 +402,42 @@ std::string add_execution_guard_to_kernels(
     while (!formated_oclkernel.empty()) {
         auto kernel_func = cut_kernel_function(formated_oclkernel);
         kernel_func = insert_global_size_guard(kernel_func, global_sizes);
+        rewriten_oclkernel << kernel_func << "\n";
+    }
+
+    return rewriten_oclkernel.str();
+}
+
+std::string add_execution_guard_to_kernels(
+    const std::string& ocl_kernels    )
+{
+    if (ocl_kernels.empty())
+        return "";
+
+    std::string formated_oclkernel;
+    std::stringstream rewriten_oclkernel;
+    //Format string
+    txt_utils::remove_extra_whitespaces(ocl_kernels, formated_oclkernel);
+    txt_utils::remove_comments_block(formated_oclkernel, "/*", "*/");
+    txt_utils::remove_comments_block(formated_oclkernel, "//", "\n");
+    //txt_utils::remove_newline_tabs_carrieg(formated_oclkernel);
+    //std::cout<<formated_oclkernel<<std::endl;
+    
+    // find all appearances of: __kernelvoid or kernelvoid and replace with:
+    // __kernel void or kernel void
+    size_t pos = 0;
+    while (pos != std::string::npos)
+        pos = pre_process_kernel_func(formated_oclkernel);
+
+    if (!copy_include_headers(rewriten_oclkernel, formated_oclkernel))
+        return "";
+
+    const std::array<std::string,3> global_size_args = { "_GX_","_GY_","_GZ_" };
+
+    while (!formated_oclkernel.empty()) 
+    {
+        auto kernel_func = cut_kernel_function(formated_oclkernel);
+        kernel_func = insert_global_size_guard_and_args(kernel_func, global_size_args);
         rewriten_oclkernel << kernel_func << "\n";
     }
 

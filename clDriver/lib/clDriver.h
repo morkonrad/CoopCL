@@ -400,6 +400,7 @@ namespace coopcl
 		std::string _body{ "" };
 		std::string _name{ "" };
 		std::string _jit_flags{ " " };
+		std::uint8_t _dim_id_divided{ 0 };
 
 		int build_args_info(const cl::Kernel* k)
 		{
@@ -458,7 +459,8 @@ namespace coopcl
 		
 		clTask(){}
 		
-		int build(const cl::Kernel& kernel_cpu,
+		int build(
+			const cl::Kernel& kernel_cpu,
 			const cl::Kernel& kernel_gpu,
 			const std::string& task_body,
 			const std::string& task_name,
@@ -468,19 +470,53 @@ namespace coopcl
 			_name = task_name;
 			_jit_flags = task_jit_flags;
 
-			_kernel_cpu = kernel_cpu;
+			//Set device dependent context
 			int err = 0;
+			_kernel_cpu = kernel_cpu;			
 			_ctx_cpu = _kernel_cpu.getInfo<CL_KERNEL_CONTEXT>(&err);
 			if (err != 0)return err;
 
 			_kernel_gpu = kernel_gpu;
 			_ctx_gpu = _kernel_gpu.getInfo<CL_KERNEL_CONTEXT>(&err);
 			if (err != 0)return err;
+			
+			//Extract information about args
+			return build_args_info(&_kernel_cpu);
+		}
 
+		int build(
+			const cl::Kernel& kernel_cpu,
+			const cl::Kernel& kernel_gpu,
+			const std::string& task_body_cpu,
+			const std::string& task_name_cpu,
+			const std::string& task_body_gpu,
+			const std::string& task_name_gpu,
+			const std::string& task_jit_flags_cpu = "",
+			const std::string& task_jit_flags_gpu = "")
+		{
+			/*_body = task_body;
+			_name = task_name;
+			_jit_flags = task_jit_flags;*/
+			
+			// TODO:: Need to implement !!
+			//Set device dependent context			
+			int err = 0; 
+			_kernel_cpu = kernel_cpu;
+			_ctx_cpu = _kernel_cpu.getInfo<CL_KERNEL_CONTEXT>(&err);
+			if (err != 0)return err;
+
+			_kernel_gpu = kernel_gpu;
+			_ctx_gpu = _kernel_gpu.getInfo<CL_KERNEL_CONTEXT>(&err);
+			if (err != 0)return err;
+			
+			//Extract informtion about args
 			return build_args_info(&_kernel_cpu);
 		}
 		
 		~clTask() { wait(); }
+
+		std::uint8_t get_dim_id_to_divide()const { return _dim_id_divided; };
+		void set_ndr_dim_to_divide(const std::uint8_t dim_id = 0) { _dim_id_divided = dim_id; }
 
 		std::string body()const { return _body; }
 		std::string name()const { return _name; }
@@ -875,6 +911,13 @@ namespace coopcl
 			std::memcpy(_data, src.data(), bytes);
 			_clalloc(ctx_cpu, ctx_gpu);
 		}
+		
+		cl_mem get_mem()const 
+		{
+			if(p_ctx_cpu)
+				return (*_buff_cpu)();
+			return (*_buff_gpu)();
+		}
 
 		cl_mem get_mem(const cl::Context& ctx)const
 		{
@@ -1221,6 +1264,7 @@ namespace coopcl
 		int execute(
 			const float offload,
 			clTask& task,
+			const cl::NDRange global_no_split,
 			const cl::NDRange global,
 			const cl::NDRange local,
 			const cl::NDRange offset,
@@ -1232,7 +1276,11 @@ namespace coopcl
 			auto kernel = _dev_type == CL_DEVICE_TYPE_CPU ? task.kernel_cpu() : task.kernel_gpu();
 			cl::Event* event_wait = _dev_type == CL_DEVICE_TYPE_CPU ? task.cpu_ready() : task.gpu_ready();
 
-			err = SetArgs(_ctx, *kernel, id, rest ...);
+			//err = SetArgs(_ctx, *kernel, id, rest ...);			
+			const int gx = global_no_split[0];
+			const int gy = global_no_split[1];
+			const int gz = global_no_split[2];
+			err = SetArgs(_ctx, *kernel, id, gx, gy, gz, rest ...);			
 			on_cl_error(err);
 			
 			std::vector<cl::Event> wait_list;
@@ -1261,10 +1309,10 @@ namespace coopcl
 			}
 
 			if (_qid >= _queues.size())_qid = 0;            		
-#ifdef _DEBUG
-			std::cout << "{gx,gy,gz}{" << global[0] << "," << global[1] << "," << global[2] << "}\n";
-			std::cout << "{lx,ly,lz}{" << local[0] << "," << local[1] << "," << local[2] << "}\n";
-#endif
+//#ifdef _DEBUG
+//			std::cout << "{gx,gy,gz}{" << global[0] << "," << global[1] << "," << global[2] << "}\n";
+//			std::cout << "{lx,ly,lz}{" << local[0] << "," << local[1] << "," << local[2] << "}\n";
+//#endif
 			err = _queues[_qid].enqueueNDRangeKernel(*kernel, offset, global, local, &wait_list, event_wait);			
 			on_cl_error(err);
 						
@@ -1303,15 +1351,60 @@ namespace coopcl
 
 		const cl::Context* ctx()const { return &_ctx; }
 
-		cl::Kernel build_task(const std::array<size_t, 3>& global_size,
+		cl::Kernel build_tasks(
+			const std::string body,
+			const std::string name,
+			const std::string jit_flags = "")
+		{
+			if (body.empty() || name.empty())
+			{
+				throw std::runtime_error("Task body or name need to be non empty, fixme!!!");
+			}
+
+			int err = 0;
+			const auto task_cache_name = name;			
+			
+			if (_bin_cache_programs.empty())
+			{
+				const auto rewriten_task = rewrite::add_execution_guard_to_kernels(body);
+				err = build_program(rewriten_task, task_cache_name, jit_flags);
+				on_cl_error(err);
+
+				auto task = cl::Kernel(clCreateKernel((*_bin_cache_programs.at(task_cache_name))(), name.c_str(), &err));
+				on_cl_error(err);
+				return task;
+			}
+			else
+			{
+				for (auto& item : _bin_cache_programs)
+				{
+					if (item.first == task_cache_name)
+					{
+						auto task = cl::Kernel(clCreateKernel((*item.second)(), name.c_str(), &err));
+						on_cl_error(err);
+						return task;
+					}
+				}
+				const auto rewriten_task = rewrite::add_execution_guard_to_kernels(body);
+				err = build_program(rewriten_task, task_cache_name, jit_flags);
+				on_cl_error(err);
+			}
+
+			auto task = cl::Kernel(clCreateKernel((*_bin_cache_programs.at(task_cache_name))(), name.c_str(), &err));
+			on_cl_error(err);
+			return task;
+
+		}
+
+		cl::Kernel build_task(
+			const std::array<size_t, 3>& global_size,
 			const std::string body,
 			const std::string name,
 			const std::string jit_flags = "")
 		{
 			int err = 0;
-
-			const auto task_cache_name = calc_cache_name(name, global_size);
-			const auto rewriten_task = rewrite::add_execution_guard_to_kernels(body, global_size);		
+			const auto task_cache_name = name;//calc_cache_name(name, global_size);
+			const auto rewriten_task = body;//rewrite::add_execution_guard_to_kernels(body, global_size);
 
 			if (_bin_cache_programs.empty())
 			{
@@ -1344,6 +1437,100 @@ namespace coopcl
 		}
 
 	};
+	
+	static auto round_to_wg_multiple = [](
+		const cl::NDRange& global, const cl::NDRange& local_in,
+		cl::NDRange& global_cpu, cl::NDRange& global_gpu,
+		cl::NDRange& local_cpu, cl::NDRange& local_gpu,
+		const size_t items_cpu, const size_t items_gpu,
+		cl::NDRange& global_offset,
+		const size_t dim_ndr, const size_t dim_to_split)->int
+	{
+		//if any local_in[]==0 --> a case where RT can set any local_size
+		//8 for dim_0 because of CPU vectorization
+		cl::NDRange local = { 
+			local_in[0] == 0 ? 8 : local_in[0],
+			local_in[1] == 0 ? 1 : local_in[1],
+			local_in[2] == 0 ? 1 : local_in[2]};
+		
+		const auto loc_size = local[dim_to_split];
+		const size_t wg_mul_cpu = items_cpu % loc_size;
+		const size_t wg_mul_gpu = items_gpu % loc_size;
+
+		const size_t gx_pad_cpu = (wg_mul_cpu == 0 ? items_cpu / loc_size : (items_cpu / loc_size) + 1)*loc_size;
+		const size_t gx_pad_gpu = (wg_mul_gpu == 0 ? items_gpu / loc_size : (items_gpu / loc_size) + 1)*loc_size;
+
+		switch (dim_ndr)
+		{
+		case 1:
+			local_cpu = { local[0] };
+			local_gpu = { local[0] };
+
+			global_cpu = { gx_pad_cpu };
+			global_gpu = { gx_pad_gpu };
+			global_offset = { gx_pad_cpu };
+
+			break;
+		case 2:
+			local_cpu = { local[0],local[1] };
+			local_gpu = { local[0],local[1] };
+
+			switch (dim_to_split)
+			{
+			case 0:
+				global_cpu = { gx_pad_cpu,global[1] };
+				global_gpu = { gx_pad_gpu,global[1] };
+				global_offset = { gx_pad_cpu,0 };
+				break;
+			case 1:
+				global_cpu = { global[0],gx_pad_cpu };
+				global_gpu = { global[0],gx_pad_gpu };
+				global_offset = { 0, gx_pad_cpu };
+				break;
+			case 2:
+				global_cpu = { global[0],global[1],gx_pad_cpu };
+				global_gpu = { global[0],global[1],gx_pad_gpu };
+				global_offset = { 0, 0, gx_pad_cpu };
+				break;
+			}
+			break;
+		case 3:
+			local_cpu = { local[0],local[1],local[2] };
+			local_gpu = { local[0],local[1],local[2] };
+
+			switch (dim_to_split)
+			{
+			case 0:
+				global_cpu = { gx_pad_cpu,global[1],global[2] };
+				global_gpu = { gx_pad_gpu,global[1],global[2] };
+				global_offset = { gx_pad_cpu,0,0 };
+				break;
+			case 1:
+				global_cpu = { global[0],gx_pad_cpu,global[2] };
+				global_gpu = { global[0],gx_pad_gpu,global[2] };
+				global_offset = { 0, gx_pad_cpu,0 };
+				break;
+			case 2:
+				global_cpu = { global[0],global[1],gx_pad_cpu };
+				global_gpu = { global[0],global[1],gx_pad_gpu };
+				global_offset = { 0, 0, gx_pad_cpu };
+				break;
+			}
+			break;
+		}
+
+		//calculate all WI requested and divided for CPU & GPU
+		const auto wi_cpu_splited = global_cpu[0] + global_cpu[1] + global_cpu[2];
+		const auto wi_gpu_splited = global_gpu[0] + global_gpu[1] + global_gpu[2];
+		const auto wi_input = global[0] + global[1] + global[2];		
+
+		//If wi_cpu_splited after round to wg_multiple is more than all_wi then return 1 (means no divided execution)
+		//If wi_gpu_splited after round to wg_multiple is more than all_wi then return 1 (means no divided execution)
+		if (wi_cpu_splited >= wi_input)return 1;
+		if (wi_gpu_splited >= wi_input)return 1;
+
+		return 0;
+	};
 
 	class virtual_device
 	{
@@ -1366,9 +1553,14 @@ namespace coopcl
 			cl::NDRange& global_gpu,
 			cl::NDRange& global_offset,
 			cl::NDRange& local_cpu,
-			cl::NDRange& local_gpu)
+			cl::NDRange& local_gpu,
+			const std::uint8_t dim_to_split=0)
 		{
 			const std::uint8_t dim_ndr = static_cast<std::uint8_t>(global.dimensions());
+			
+			// dim_to_split is 0,1,2 and dim_ndr is 1,2,3
+			// assert --> dim_to_split < dim_ndr !
+			if (dim_to_split >= dim_ndr) return -1;
 
 			size_t items = 1;
 			for (size_t dim = 0; dim < dim_ndr; dim++)
@@ -1376,7 +1568,7 @@ namespace coopcl
 
 			if (items < 1) return -1;
 
-			const size_t dim_split = global[0];
+			const size_t dim_split = global[dim_to_split];
 
 			const float one_item = (float)dim_split / 100.0f;
 			const auto procent = offload * 100.0f; //offload range--> (0:1>
@@ -1390,152 +1582,100 @@ namespace coopcl
 			//------------------------------------------
 			//group_sizes + global_sizes extend/pad
 			//------------------------------------------
-			if (local == cl::NullRange || local[0] == 0)
-			{
-				const size_t items_cpu_pad_wg = 32;
-				const size_t items_gpu_pad_wg = 64;
-
-				const size_t wg_mul_cpu = items_cpu % items_cpu_pad_wg;
-				const size_t wg_mul_gpu = items_gpu % items_gpu_pad_wg;
-
-				const size_t gx_pad_cpu = (wg_mul_cpu == 0 ? items_cpu / items_cpu_pad_wg : (items_cpu / items_cpu_pad_wg) + 1)*items_cpu_pad_wg;
-				const size_t gx_pad_gpu = (wg_mul_gpu == 0 ? items_gpu / items_gpu_pad_wg : (items_gpu / items_gpu_pad_wg) + 1)*items_gpu_pad_wg;
-
-				switch (dim_ndr)
-				{
-				case 1:
-					local_cpu = { items_cpu_pad_wg };
-					local_gpu = { items_gpu_pad_wg };
-
-					global_cpu = { gx_pad_cpu };
-					global_gpu = { gx_pad_gpu };
-					global_offset = { items_cpu };
-
-					break;
-				case 2:
-					local_cpu = { items_cpu_pad_wg,1 };
-					local_gpu = { items_gpu_pad_wg,1 };
-
-					global_cpu = { gx_pad_cpu,global[1] };
-					global_gpu = { gx_pad_gpu,global[1] };
-					global_offset = { items_cpu,0 };
-
-					break;
-				case 3:
-					local_cpu = { items_cpu_pad_wg,1,1 };
-					local_gpu = { items_gpu_pad_wg,1,1 };
-
-					global_cpu = { gx_pad_cpu,global[1],global[2] };
-					global_gpu = { gx_pad_gpu,global[1],global[2] };
-					global_offset = { items_cpu,0,0 };
-					break;
-				}
-			}
-			else
-			{
-				const size_t wg_mul_cpu = items_cpu % local[0];
-				const size_t wg_mul_gpu = items_gpu % local[0];
-
-				const size_t gx_pad_cpu = (wg_mul_cpu == 0 ? items_cpu / local[0] : (items_cpu / local[0]) + 1)*local[0];
-				const size_t gx_pad_gpu = (wg_mul_gpu == 0 ? items_gpu / local[0] : (items_gpu / local[0]) + 1)*local[0];
-
-				switch (dim_ndr)
-				{
-				case 1:
-					local_cpu = { local[0] };
-					local_gpu = { local[0] };
-
-					global_cpu = { gx_pad_cpu };
-					global_gpu = { gx_pad_gpu };
-					global_offset = { items_cpu };
-
-					break;
-				case 2:
-					local_cpu = { local[0],local[1] };
-					local_gpu = { local[0],local[1] };
-
-					global_cpu = { gx_pad_cpu,global[1] };
-					global_gpu = { gx_pad_gpu,global[1] };
-					global_offset = { items_cpu,0 };
-
-					break;
-				case 3:
-					local_cpu = { local[0],local[1],local[2] };
-					local_gpu = { local[0],local[1],local[2] };
-
-					global_cpu = { gx_pad_cpu,global[1],global[2] };
-					global_gpu = { gx_pad_gpu,global[1],global[2] };
-					global_offset = { items_cpu,0,0 };
-					break;
-				}
-			}
-			
-			return 0;
+			return round_to_wg_multiple(global, local, 
+				global_cpu, global_gpu, 
+				local_cpu, local_gpu, 
+				items_cpu, items_gpu, 
+				global_offset, dim_ndr, dim_to_split);
 		}
 
-		template <typename... Args>
-		int execute_async_tmp(
+		//template <typename... Args>
+		//int execute_async_tmp(
+		//	clTask& task,
+		//	const float offload,
+		//	const cl::NDRange& global,
+		//	const cl::NDRange& local,
+		//	const cl::NDRange& offset,
+		//	Args&... rest)
+		//{
+		//	int err = 0;
+
+		//	if ((int)offload < 0)return-1;
+		//	if ((int)offload > 1)return-1;
+
+
+		//	if (cmpf(offload, 1.0f))
+		//	{
+		//		return _dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), global, local, offset, rest ...);
+		//	}
+		//	else if (cmpf(offload, 0.0f))
+		//	{
+		//		return _dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), global, local, offset, rest ...);
+		//	}
+		//	else
+		//	{
+		//		cl::NDRange gcpu, ggpu, offset_split, loc_cpu, loc_gpu;
+		//		const auto res = divide_ndranges(offload, global, local, gcpu, ggpu, offset_split, loc_cpu, loc_gpu);
+
+		//		if (res == -1) { return CL_INVALID_OPERATION; }
+
+		//		else if (res == 1) //workload remainder is to small to execute on both devices
+		//		{
+		//			if (offload > 0.5f)
+		//			{
+		//				return _dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), global, local, offset, rest ...);
+		//			}
+		//			else
+		//			{
+		//				return _dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), global, local, offset, rest ...);
+		//			}
+		//		}
+		//		else
+		//		{
+		//			// Need to wait for both devices,
+		//			// because previous call could be processed via both CPU+GPU
+		//			if (!task.dependence_list().empty())
+		//			{
+		//				for (auto t : task.dependence_list())
+		//				{
+		//					err = t->wait();
+		//					on_cl_error(err);
+		//				}
+		//			}
+
+		//			_dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), ggpu, loc_gpu, offset_split, rest ...);
+		//			on_cl_error(err);
+
+		//			_dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), gcpu, loc_cpu, cl::NullRange, rest ...);
+		//			on_cl_error(err);
+		//		}
+		//	}
+
+		//	return err;
+		//}
+
+		int build_tasks(
 			clTask& task,
-			const float offload,
-			const cl::NDRange& global,
-			const cl::NDRange& local,
-			const cl::NDRange& offset,
-			Args&... rest)
+			const std::string body_cpu,
+			const std::string name_cpu,
+			const std::string jit_flags_cpu,
+			const std::string body_gpu,
+			const std::string name_gpu,
+			const std::string jit_flags_gpu)
 		{
-			int err = 0;
+			//TODO: Impl. separate body,name,flags for CPU and GPU			
+			return -1;
+		}
 
-			if ((int)offload < 0)return-1;
-			if ((int)offload > 1)return-1;
-
-
-			if (cmpf(offload, 1.0f))
-			{
-				return _dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), global, local, offset, rest ...);
-			}
-			else if (cmpf(offload, 0.0f))
-			{
-				return _dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), global, local, offset, rest ...);
-			}
-			else
-			{
-				cl::NDRange gcpu, ggpu, offset_split, loc_cpu, loc_gpu;
-				const auto res = divide_ndranges(offload, global, local, gcpu, ggpu, offset_split, loc_cpu, loc_gpu);
-
-				if (res == -1) { return CL_INVALID_OPERATION; }
-
-				else if (res == 1) //workload remainder is to small to execute on both devices
-				{
-					if (offload > 0.5f)
-					{
-						return _dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), global, local, offset, rest ...);
-					}
-					else
-					{
-						return _dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), global, local, offset, rest ...);
-					}
-				}
-				else
-				{
-					// Need to wait for both devices,
-					// because previous call could be processed via both CPU+GPU
-					if (!task.dependence_list().empty())
-					{
-						for (auto t : task.dependence_list())
-						{
-							err = t->wait();
-							on_cl_error(err);
-						}
-					}
-
-					_dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), ggpu, loc_gpu, offset_split, rest ...);
-					on_cl_error(err);
-
-					_dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), gcpu, loc_cpu, cl::NullRange, rest ...);
-					on_cl_error(err);
-				}
-			}
-
-			return err;
+		int build_tasks(
+			clTask& task,
+			const std::string body,
+			const std::string name,
+			const std::string jit_flags = "")
+		{			
+			const auto kcpu = _dCPU->build_tasks(body, name, jit_flags);
+			const auto kgpu = _dGPU->build_tasks(body, name, jit_flags);
+			return task.build(kcpu, kgpu, body, name, jit_flags);
 		}
 		
 	public:
@@ -1652,9 +1792,13 @@ namespace coopcl
 			const std::string name,
 			const std::string jit_flags = "")
 		{
-			const auto kcpu = _dCPU->build_task(global_size, body, name, jit_flags);
+			if (body.empty() || name.empty()) return -100;
+			return build_tasks(task, body, name, jit_flags);
+			//old_code
+			/*const auto kcpu = _dCPU->build_task(global_size, body, name, jit_flags);
 			const auto kgpu = _dGPU->build_task(global_size, body, name, jit_flags);
-			return task.build(kcpu,kgpu,body, name, jit_flags);			
+			return task.build(kcpu,kgpu,body, name, jit_flags);					
+			*/
 		}
 
 		int wait()const
@@ -1670,7 +1814,7 @@ namespace coopcl
 			clTask& task,
 			const float offload_,
 			const std::array<size_t, 3> global,
-			const std::array<size_t, 3> local,
+			const std::array<size_t, 3> local,			
 			Args&... rest)
 		{
 			int err = 0;
@@ -1699,31 +1843,32 @@ namespace coopcl
 			
 			if (cmpf(offload, 1.0f))
 			{				
-				return _dGPU->execute(offload, task, global_in, local_in, cl::NullRange, rest ...);
+				return _dGPU->execute(offload, task, global_in, global_in, local_in, cl::NullRange, rest ...);
 			}
 			else if (cmpf(offload, 0.0f))
 			{				
-				return _dCPU->execute(offload,task, global_in, local_in, cl::NullRange, rest ...);
+				return _dCPU->execute(offload,task, global_in, global_in, local_in, cl::NullRange, rest ...);
 			}
 			else
 			{
 				cl::NDRange gcpu, ggpu, offset, loc_cpu, loc_gpu;
-				const auto res = divide_ndranges(offload, global_in, local_in, gcpu, ggpu, offset, loc_cpu, loc_gpu);
+				const auto dim_to_split_id = task.get_dim_id_to_divide();
+				const auto res = divide_ndranges(offload, global_in, local_in, gcpu, ggpu, offset, loc_cpu, loc_gpu,dim_to_split_id);
 				if (res == -1) { return CL_INVALID_OPERATION; }
 
 				else if (res == 1) //workload remainder is to small to execute on both devices
 				{
 					if (offload > 0.5f)
-						return _dGPU->execute(offload,task, global_in, local_in, cl::NullRange, rest ...);
+						return _dGPU->execute(offload,task, global_in, global_in, local_in, cl::NullRange, rest ...);
 					else					
-						return _dCPU->execute(offload,task, global_in, local_in, cl::NullRange, rest ...);					
+						return _dCPU->execute(offload,task, global_in, global_in, local_in, cl::NullRange, rest ...);
 				}
 				else
 				{	                   
-					err = _dGPU->execute(offload, task, ggpu, loc_gpu, offset, rest ...);
+					err = _dGPU->execute(offload, task, global_in, ggpu, loc_gpu, offset, rest ...);
 					on_cl_error(err);
 
-					err = _dCPU->execute(offload, task, gcpu, loc_cpu, cl::NullRange, rest ...);
+					err = _dCPU->execute(offload, task, global_in, gcpu, loc_cpu, cl::NullRange, rest ...);
 					on_cl_error(err);					
 				}
 			}
@@ -1736,7 +1881,7 @@ namespace coopcl
 			clTask& task,
 			const float offload,
 			const std::array<size_t, 3> global,
-			const std::array<size_t, 3> local,
+			const std::array<size_t, 3> local,			
 			Args&... rest)
 		{
 			auto err = execute_async(task, offload, global, local, rest ...);
@@ -1745,20 +1890,20 @@ namespace coopcl
 			return err;
 		}
 
-		template <typename... Args>
-		int execute_tmp(
-			clTask& task,
-			const float offload,
-			const cl::NDRange& global,
-			const cl::NDRange& local,
-			const cl::NDRange& offset,
-			Args&... rest)
-		{
-			auto err = execute_async_tmp(task, offload, global, local, offset, rest ...);
-			on_cl_error(err);			
-			//err = task.wait();
-			return err;
-		}
+		//template <typename... Args>
+		//int execute_tmp(
+		//	clTask& task,
+		//	const float offload,
+		//	const cl::NDRange& global,
+		//	const cl::NDRange& local,
+		//	const cl::NDRange& offset,
+		//	Args&... rest)
+		//{
+		//	auto err = execute_async_tmp(task, offload, global, local, offset, rest ...);
+		//	on_cl_error(err);			
+		//	//err = task.wait();
+		//	return err;
+		//}
 		
 		std::unique_ptr<clMemory>
 		alloc(const size_t items, const bool read_only = false)
