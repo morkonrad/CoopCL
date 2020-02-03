@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <CL/cl.hpp>
 #include <memory>
@@ -578,7 +578,7 @@ namespace coopcl
 			return err;
 		}			
 		
-		float update_offload()//const
+		float update_offload()const
 		{
 			if (_previous_observation.empty()) {
 				return 0.5f;
@@ -587,14 +587,14 @@ namespace coopcl
 			const auto tuple = _previous_observation.back();
 			const auto last_offload = std::get<0>(tuple);
 
-			const auto cpu_duration_n_1 = std::get<1>(tuple);
-			if (cpu_duration_n_1 == 0)return 1.0f;
+			const auto cpu_duration = std::get<1>(tuple);
+			if (cpu_duration == 0)return 1.0f;
 
-			const auto gpu_duration_n_1 = std::get<2>(tuple);
-			if (gpu_duration_n_1 == 0)return 0.0f;
+			const auto gpu_duration = std::get<2>(tuple);
+			if (gpu_duration == 0)return 0.0f;
 
 			float updated_offload = 0;
-			const auto ratio = cpu_duration_n_1 / gpu_duration_n_1;
+			const auto ratio = cpu_duration / gpu_duration;
 			if (std::fabs(1.0 - ratio) < 0.125)
 				updated_offload = last_offload;
 			else
@@ -798,7 +798,7 @@ namespace coopcl
 		const cl::Context* p_ctx_gpu{ nullptr };
 
 		std::unique_ptr<cl::Buffer> _buff_cpu{ nullptr };		
-		std::unique_ptr<cl::Buffer> _buff_gpu{ nullptr };		
+		std::unique_ptr<cl::Buffer> _buff_gpu{ nullptr };					
 		
 		void _clalloc(const cl::Context& ctx_cpu,
 					  const cl::Context& ctx_gpu)
@@ -816,7 +816,7 @@ namespace coopcl
 			
             _buff_gpu = std::unique_ptr<cl::Buffer>(new cl::Buffer(ctx_gpu, flag | CL_MEM_USE_HOST_PTR, _size, (void*)_data, &err));						
 			//_buff_gpu = std::unique_ptr<cl::Buffer>(new cl::Buffer(ctx_gpu, flag , _size, nullptr, &err));
-            on_cl_error(err);
+            on_cl_error(err);			
 		}
 
 		template<typename T>
@@ -827,7 +827,7 @@ namespace coopcl
 			_flag = CL_MEM_READ_WRITE | CL_MEM_SVM_FINE_GRAIN_BUFFER;
 			if (_read_only) _flag = CL_MEM_READ_ONLY | CL_MEM_SVM_FINE_GRAIN_BUFFER;
 			_data = clSVMAlloc(ctx_gpu(), _flag, _size, 0);
-            if(_data==nullptr)throw std::runtime_error(" memory==nullptr -->Check driver !!");
+            if(_data==nullptr)throw std::runtime_error(" memory==nullptr -->Check driver !!");			
 			return _data;
 		}
 		
@@ -930,6 +930,19 @@ namespace coopcl
 		~clMemory() 
 		{
 			clSVMFree((*p_ctx_gpu)(), _data);
+			
+#ifdef _DEBUG
+			cl_uint cnt_ref_cpu = 0;
+			clGetMemObjectInfo((*_buff_cpu)(), CL_MEM_REFERENCE_COUNT, sizeof(cl_uint), &cnt_ref_cpu, nullptr);
+
+			cl_uint cnt_ref_gpu = 0;
+			clGetMemObjectInfo((*_buff_gpu)(), CL_MEM_REFERENCE_COUNT, sizeof(cl_uint), &cnt_ref_gpu, nullptr);
+			if (cnt_ref_gpu != 1 || cnt_ref_cpu != 1)
+			{
+				std::cerr << "Found mem_leak, fixme!!" << std::endl;
+				throw std::runtime_error("Memory leak found !");
+			}
+#endif // _DEBUG
 		}
 
 		template<typename T>
@@ -937,44 +950,6 @@ namespace coopcl
 		{			
 			return *(static_cast<const T*>(_data) + id);
 		}
-
-//#define _DEBUG
-#ifdef _DEBUG
-		template<typename T>
-		void get_val(cl::Buffer* buff,std::vector<T>&values,const size_t size)const
-		{
-			int err = 0;
-			auto ctx = buff->getInfo<CL_MEM_CONTEXT>(&err);
-			auto devs = ctx.getInfo<CL_CONTEXT_DEVICES>(&err);
-
-            cl::CommandQueue cq(ctx, devs[0], 0, &err);
-			auto ptr = cq.enqueueMapBuffer(*buff, true, CL_MAP_READ, 0,_size, nullptr, nullptr, &err);            
-			const auto items = size / sizeof(T);
-
-			values.resize(items);
-			std::memcpy(values.data(), ptr, size);					
-			err = cq.enqueueUnmapMemObject(*buff, ptr, nullptr, nullptr);
-			return;
-		}
-
-		template<typename T>
-        void val(std::vector<T>& cpu_val,
-                 std::vector<T>& gpu_val,
-                 std::vector<T>& app_val)const
-		{                        
-
-            get_val(_buff_cpu.get(), cpu_val, _size);
-            app_val.resize(_items); std::memcpy(app_val.data(),_data,_size);
-            get_val(_buff_gpu.get(), gpu_val, _size);
-
-            /*app_val.clear();
-            app_val.resize(_items); std::memcpy(app_val.data(),_data,_size);
-            cpu_val.clear();
-            get_val(_buff_cpu.get(), cpu_val, _size);
-			*/
-
-		}
-#endif				
 
 		void* data()const{ 			
 			return _data; }
@@ -1587,72 +1562,7 @@ namespace coopcl
 				local_cpu, local_gpu, 
 				items_cpu, items_gpu, 
 				global_offset, dim_ndr, dim_to_split);
-		}
-
-		//template <typename... Args>
-		//int execute_async_tmp(
-		//	clTask& task,
-		//	const float offload,
-		//	const cl::NDRange& global,
-		//	const cl::NDRange& local,
-		//	const cl::NDRange& offset,
-		//	Args&... rest)
-		//{
-		//	int err = 0;
-
-		//	if ((int)offload < 0)return-1;
-		//	if ((int)offload > 1)return-1;
-
-
-		//	if (cmpf(offload, 1.0f))
-		//	{
-		//		return _dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), global, local, offset, rest ...);
-		//	}
-		//	else if (cmpf(offload, 0.0f))
-		//	{
-		//		return _dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), global, local, offset, rest ...);
-		//	}
-		//	else
-		//	{
-		//		cl::NDRange gcpu, ggpu, offset_split, loc_cpu, loc_gpu;
-		//		const auto res = divide_ndranges(offload, global, local, gcpu, ggpu, offset_split, loc_cpu, loc_gpu);
-
-		//		if (res == -1) { return CL_INVALID_OPERATION; }
-
-		//		else if (res == 1) //workload remainder is to small to execute on both devices
-		//		{
-		//			if (offload > 0.5f)
-		//			{
-		//				return _dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), global, local, offset, rest ...);
-		//			}
-		//			else
-		//			{
-		//				return _dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), global, local, offset, rest ...);
-		//			}
-		//		}
-		//		else
-		//		{
-		//			// Need to wait for both devices,
-		//			// because previous call could be processed via both CPU+GPU
-		//			if (!task.dependence_list().empty())
-		//			{
-		//				for (auto t : task.dependence_list())
-		//				{
-		//					err = t->wait();
-		//					on_cl_error(err);
-		//				}
-		//			}
-
-		//			_dGPU->execute_tmp(offload, *task.gpu_ready(), *task.kernel_gpu(), ggpu, loc_gpu, offset_split, rest ...);
-		//			on_cl_error(err);
-
-		//			_dCPU->execute_tmp(offload, *task.cpu_ready(), *task.kernel_cpu(), gcpu, loc_cpu, cl::NullRange, rest ...);
-		//			on_cl_error(err);
-		//		}
-		//	}
-
-		//	return err;
-		//}
+		}		
 
 		int build_tasks(
 			clTask& task,
@@ -1793,12 +1703,7 @@ namespace coopcl
 			const std::string jit_flags = "")
 		{
 			if (body.empty() || name.empty()) return -100;
-			return build_tasks(task, body, name, jit_flags);
-			//old_code
-			/*const auto kcpu = _dCPU->build_task(global_size, body, name, jit_flags);
-			const auto kgpu = _dGPU->build_task(global_size, body, name, jit_flags);
-			return task.build(kcpu,kgpu,body, name, jit_flags);					
-			*/
+			return build_tasks(task, body, name, jit_flags);			
 		}
 
 		int wait()const
@@ -1889,21 +1794,6 @@ namespace coopcl
 			err = task.wait();
 			return err;
 		}
-
-		//template <typename... Args>
-		//int execute_tmp(
-		//	clTask& task,
-		//	const float offload,
-		//	const cl::NDRange& global,
-		//	const cl::NDRange& local,
-		//	const cl::NDRange& offset,
-		//	Args&... rest)
-		//{
-		//	auto err = execute_async_tmp(task, offload, global, local, offset, rest ...);
-		//	on_cl_error(err);			
-		//	//err = task.wait();
-		//	return err;
-		//}
 		
 		std::unique_ptr<clMemory>
 		alloc(const size_t items, const bool read_only = false)
