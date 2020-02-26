@@ -18,6 +18,6 @@ build_script:
 - cmd: cd build    
 - cmd: cmake c:\projects\source -G "Visual Studio 15 Win64"   
 - cmd: cmake --build . --config "Release"
-test_script:
-- cmd: cd clDriver
-- cmd: ctest
+#test_script:
+#- cmd: cd clDriver
+#- cmd: ctest
