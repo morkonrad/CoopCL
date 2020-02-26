@@ -107,16 +107,16 @@ device.build_task(taskA, { items, 1, 1 }, tasks, "kA");
 	
 coopcl::clTask taskB;
 device.build_task(taskB,{ items,1,1 }, tasks, "kB");
-taskB.dependence_list().push_back(&taskA);
+taskB.add_dependence(&taskA);
 
 coopcl::clTask taskC;
 device.build_task(taskC,{ items,1,1 }, tasks, "kC");
-taskC.dependence_list().push_back(&taskA);
+taskC.add_dependence(&taskA);
 
 coopcl::clTask taskD;
 device.build_task(taskD,{ items,1,1 }, tasks, "kD");
-taskD.dependence_list().push_back(&taskB);
-taskD.dependence_list().push_back(&taskC);
+taskD.add_dependence(&taskB);
+taskD.add_dependence(&taskC);
 
 const std::array<size_t, 3> ndr = { items,1,1 };
 const std::array<size_t, 3> wgs = { 16,1,1 };
