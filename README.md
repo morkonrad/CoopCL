@@ -104,18 +104,18 @@ auto mC = device.alloc<int>(items);
 auto mD = device.alloc<int>(items);
 
 coopcl::clTask taskA;
-device.build_task(taskA, { items, 1, 1 }, tasks, "kA");
+device.build_task(taskA,tasks, "kA");
 	
 coopcl::clTask taskB;
-device.build_task(taskB,{ items,1,1 }, tasks, "kB");
+device.build_task(taskB, tasks, "kB");
 taskB.add_dependence(&taskA);
 
 coopcl::clTask taskC;
-device.build_task(taskC,{ items,1,1 }, tasks, "kC");
+device.build_task(taskC,tasks, "kC");
 taskC.add_dependence(&taskA);
 
 coopcl::clTask taskD;
-device.build_task(taskD,{ items,1,1 }, tasks, "kD");
+device.build_task(taskD, tasks, "kD");
 taskD.add_dependence(&taskB);
 taskD.add_dependence(&taskC);
 
