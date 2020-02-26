@@ -76,13 +76,13 @@ int main(int argc, char **argv)
 
 	//create OpenCL kernels 	
 	coopcl::clTask kernelprk1;
-	device.build_task(kernelprk1,{ global_work[0],global_work[1],global_work[2] }, std::string(source), "inibuffer");
+	device.build_task(kernelprk1, std::string(source), "inibuffer");
 	coopcl::clTask kernelprk2;
-	device.build_task(kernelprk2,{ global_work[0],global_work[1],global_work[2] }, std::string(source), "inicsr");
+	device.build_task(kernelprk2, std::string(source), "inicsr");
 	coopcl::clTask kernelprk3;
-	device.build_task(kernelprk3,{ global_work[0],global_work[1],global_work[2] }, std::string(source), "spmv_csr_scalar_kernel");
+	device.build_task(kernelprk3, std::string(source), "spmv_csr_scalar_kernel");
 	coopcl::clTask kernelprk4;
-	device.build_task(kernelprk4,{ global_work[0],global_work[1],global_work[2] }, std::string(source), "pagerank2");
+	device.build_task(kernelprk4, std::string(source), "pagerank2");
 
 	std::vector<float> offloads;
 	auto step = 0.1f;

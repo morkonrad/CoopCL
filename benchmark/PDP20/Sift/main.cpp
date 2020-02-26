@@ -613,39 +613,39 @@ class sift_octave
 
 		if (_octave_id == 0)
 		{
-			err = device.build_task(_task_Color, { _scale_image_width,_scale_image_height,1 }, tasks, "kColor", jit.str()); 
+			err = device.build_task(_task_Color,  tasks, "kColor", jit.str()); 
 			if (err != 0)throw std::runtime_error("kColor fail -> fixme!!");
 		}
 		else
 		{
-			err = device.build_task(_task_Down, { _scale_image_width,_scale_image_height,1 }, tasks, "kDown", jit.str());
+			err = device.build_task(_task_Down,  tasks, "kDown", jit.str());
 			if (err != 0)throw std::runtime_error("kDown fail -> fixme!!");
 		}
 		
 		for (int scale_id = 0; scale_id < _MAX_SCALES; scale_id++)
 		{
 			_task_BlurH.push_back(std::make_unique<coopcl::clTask>());
-			err = device.build_task(*_task_BlurH[scale_id], { _scale_image_width,_scale_image_height,1 }, tasks, "kBlurH", jit.str());
+			err = device.build_task(*_task_BlurH[scale_id],  tasks, "kBlurH", jit.str());
 			if (err != 0)if (err != 0)if (err != 0)throw std::runtime_error("kBlur fail -> fixme!!");
 
 			_task_BlurV.push_back(std::make_unique<coopcl::clTask>());
-			err = device.build_task(*_task_BlurV[scale_id], { _scale_image_width,_scale_image_height,1 }, tasks, "kBlurV", jit.str());
+			err = device.build_task(*_task_BlurV[scale_id],  tasks, "kBlurV", jit.str());
 			if (err != 0)if (err != 0)if (err != 0)throw std::runtime_error("kBlur fail -> fixme!!");
 
 			// now set task_dependencies			
 			if (scale_id > 0)
 			{
-				_task_BlurH[scale_id]->dependence_list().push_back(_task_BlurV[scale_id - 1].get());
-				_task_BlurV[scale_id]->dependence_list().push_back(_task_BlurH[scale_id].get());
+				_task_BlurH[scale_id]->add_dependence(_task_BlurV[scale_id - 1].get());
+				_task_BlurV[scale_id]->add_dependence(_task_BlurH[scale_id].get());
 			}
 			else
 			{
 				if (_octave_id == 0)
-					_task_BlurH[scale_id]->dependence_list().push_back(&_task_Color);
+					_task_BlurH[scale_id]->add_dependence(&_task_Color);
 				else
-					_task_BlurH[scale_id]->dependence_list().push_back(&_task_Down);
+					_task_BlurH[scale_id]->add_dependence(&_task_Down);
 
-				_task_BlurV[scale_id]->dependence_list().push_back(_task_BlurH[scale_id].get());
+				_task_BlurV[scale_id]->add_dependence(_task_BlurH[scale_id].get());
 			}
 
 			//now memory
@@ -656,11 +656,11 @@ class sift_octave
 		for (int i = 0; i < _MAX_SCALES-1; i++)
 		{
 			_task_Diff.push_back(std::make_unique<coopcl::clTask>());
-			err = device.build_task(*_task_Diff[i], { _scale_image_width,_scale_image_height,1 }, tasks, "kDiff", jit.str());
+			err = device.build_task(*_task_Diff[i], tasks, "kDiff", jit.str());
 			if (err != 0)throw std::runtime_error("kDiff fail -> fixme!!");
 
 			//set task_dependencies
-			_task_Diff[i]->dependence_list().push_back(_task_BlurV[i + 1].get());
+			_task_Diff[i]->add_dependence(_task_BlurV[i + 1].get());
 
 			//now memory
 			_diff_scale_images.push_back(device.alloc<float>(items));
@@ -685,23 +685,23 @@ class sift_octave
 		for (int i = 0; i < _SIFT_INTVLS; i++)
 		{
 			_task_Detector.push_back(std::make_unique<coopcl::clTask>());
-			err = device.build_task(*_task_Detector[i], { _scale_image_width,_scale_image_height,1 }, tasks, "kDetector", jit.str());
+			err = device.build_task(*_task_Detector[i],  tasks, "kDetector", jit.str());
 			if (err != 0)throw std::runtime_error("kDetector fail -> fixme!!");			
 		}
 		//set dependencies
 		for (int i = 1; i <= _SIFT_INTVLS; i++)
 		{
-			_task_Detector[i-1]->dependence_list().push_back(_task_Diff[i - 1].get());
-			_task_Detector[i-1]->dependence_list().push_back(_task_Diff[i].get());
-			_task_Detector[i-1]->dependence_list().push_back(_task_Diff[i + 1].get());
+			_task_Detector[i-1]->add_dependence(_task_Diff[i - 1].get());
+			_task_Detector[i-1]->add_dependence(_task_Diff[i].get());
+			_task_Detector[i-1]->add_dependence(_task_Diff[i + 1].get());
 		}	
 
-		err = device.build_task(_task_Reset, { _scale_image_width,_scale_image_height,1 }, tasks, "kReset", jit.str());
+		err = device.build_task(_task_Reset, tasks, "kReset", jit.str());
 		if (err != 0)throw std::runtime_error("kReset fail -> fixme!!");
 
 
 		for (int i = 0; i < _SIFT_INTVLS; i++)
-			_task_Reset.dependence_list().push_back(_task_Detector[i].get());
+			_task_Reset.add_dependence(_task_Detector[i].get());
 	}
 
 	int call_async( const float offload,
@@ -729,7 +729,7 @@ class sift_octave
 			if (scale_image_prev_octave == nullptr)return -111;
 			if (wait_task_prev_octave == nullptr)return -222;
 
-			_task_Down.dependence_list().push_back(wait_task_prev_octave);
+			_task_Down.add_dependence(wait_task_prev_octave);
 			
 			
 			const int wo = (int)(_scale_image_width * 2);

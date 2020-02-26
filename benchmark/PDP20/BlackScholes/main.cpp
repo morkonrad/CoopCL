@@ -244,7 +244,7 @@ int main(int argc,char** argv)
 	ref_gold({ (size_t)M,(size_t)N,1 }, { 1,1,1 }, va, M, vb_ref, vc_ref,verbose);
 
 	coopcl::clTask task;
-	device.build_task(task,{ (size_t)M,(size_t)N,1 }, blackScholes, "blackScholes");
+	device.build_task(task, blackScholes, "blackScholes");
 	header();
 
 	for (const auto offload : offloads)

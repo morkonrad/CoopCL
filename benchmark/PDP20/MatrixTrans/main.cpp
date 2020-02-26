@@ -75,9 +75,7 @@ int main(int argc,char** argv)
 
 	auto d_input = device.alloc(h_input, true);
 
-	coopcl::clTask task; device.build_task(task,
-	{ (size_t)(width),(size_t)(height),1 },
-		transpose, "transpose");
+	coopcl::clTask task; device.build_task(task,transpose, "transpose");
 
 	ref_gold(device, task,
 	{ (size_t)width,(size_t)height,1 },

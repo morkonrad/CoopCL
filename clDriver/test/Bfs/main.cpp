@@ -132,6 +132,9 @@ int main()
 
     constexpr auto iter = 2;
 
+	coopcl::clTask task;
+	device.build_task(task, bfs, "bfs");
+
 	for (int testid = 0; testid < 2; testid++)
 	{
 		std::cout << "Testing ..." << std::endl;
@@ -164,9 +167,7 @@ int main()
 						h_graph_mask_ref, h_updating_graph_mask_ref,
 						h_graph_visited,h_cost_ref,
 						no_of_nodes );
-
-					coopcl::clTask task; 
-					device.build_task(task,{ (size_t)no_of_nodes,1,1 }, bfs, "bfs");
+					
 
 					std::cout << "------------------------------" << std::endl;
 					for (const auto offload : offloads)

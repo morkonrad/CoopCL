@@ -130,7 +130,7 @@ int main(int argc,const char** argv)
 
     int err = 0;
 	coopcl::clTask mtask;
-	device.build_task(mtask,{ 1024,1024,1 }, kernel_func, "mandelbrot");
+	device.build_task(mtask, kernel_func, "mandelbrot");
 
     double fps = 0.;
     int frames = 0;

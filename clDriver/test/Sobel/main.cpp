@@ -125,6 +125,8 @@ int main()
 	generate_offload_range(offloads, step);	
 
     constexpr auto iter = 2;
+	coopcl::clTask task;
+	device.build_task(task, sobel_filter, "sobel_filter");
 
 	for (int testid = 0; testid < 1; testid++)
 	{
@@ -145,9 +147,6 @@ int main()
 					
 					//only single channel for host/reference 
 					ref_gold({ (size_t)width,(size_t)height,1 }, { 1,1,1 }, va, vb_ref);
-
-					coopcl::clTask task;
-					device.build_task(task,{ (size_t)(M),(size_t)(N),(size_t)(1) }, sobel_filter, "sobel_filter");
 
 					std::cout << "------------------------------" << std::endl;
 					for (const auto offload : offloads)

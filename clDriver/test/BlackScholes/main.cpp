@@ -231,6 +231,9 @@ int main()
 
     constexpr auto iter = 2;
 
+	coopcl::clTask task;
+	device.build_task(task, blackScholes, "blackScholes");
+
 	for (int testid = 0; testid < 1; testid++)
 	{
 		std::cout << "Testing ..." << std::endl;
@@ -251,9 +254,6 @@ int main()
 					auto A = device.alloc(va, true);					
 
                     ref_gold({ (size_t)M,(size_t)N,1 }, { 1,1,1 }, va,M,vb_ref, vc_ref);
-
-					coopcl::clTask task;
-					device.build_task(task,{ (size_t)M,(size_t)N,1 }, blackScholes, "blackScholes");
 
 					std::cout << "------------------------------" << std::endl;
 					for (const auto offload : offloads)

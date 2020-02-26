@@ -17,7 +17,7 @@ auto header = []()
 auto label_offload = [](const float off)->std::string
 {
 	if (off == 0.0)return"CPU_Only";
-	else if (int(off) >= 1) return "GPU_Only";
+	if (int(off) >= 1) return "GPU_Only";
 
 	std::stringstream ss;
 	ss << std::to_string(int(off*100.0)) << "/" << std::to_string(100 - int(off * 100));
@@ -25,7 +25,7 @@ auto label_offload = [](const float off)->std::string
 
 };
 
-void on_error(const int err)
+inline void on_error(const int err)
 {
     if(err!=0)
     {
@@ -34,7 +34,7 @@ void on_error(const int err)
     }
 }
 
-void init_random(std::vector<std::uint8_t>& conatiner)
+inline void init_random(std::vector<std::uint8_t>& conatiner)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -43,7 +43,7 @@ void init_random(std::vector<std::uint8_t>& conatiner)
 		val = dis_int(gen);
 }
 
-void init_random(std::vector<int>& conatiner,const int begin,const int end)
+inline void init_random(std::vector<int>& conatiner,const int begin,const int end)
 {
 	if (end < begin)return;
 
@@ -54,7 +54,7 @@ void init_random(std::vector<int>& conatiner,const int begin,const int end)
 		val = dis_int(gen);
 }
 
-void init_random(std::vector<float>& conatiner)
+inline void init_random(std::vector<float>& conatiner)
 {
 	std::random_device rd;  
 	std::mt19937 gen(rd()); 
@@ -69,7 +69,7 @@ void init_random(std::vector<float>& conatiner)
  * @param offloads
  * @param step
  */
-void generate_offload_range(std::vector<float>& offloads, const float step)
+inline void generate_offload_range(std::vector<float>& offloads, const float step)
 {
 	float v = -step;
     offloads.resize(size_t((1.0f / step) + 2));

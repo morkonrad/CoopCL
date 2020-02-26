@@ -30,13 +30,13 @@ struct if_not_prev_space
          * @param output
          */
 
-void
+inline void
 remove_extra_whitespaces(const std::string &input, std::string &output)
 {
     std::copy_if(std::begin(input), std::end(input), std::back_inserter(output), if_not_prev_space());
 }
 
-void
+inline void
 find_comments_block(const std::string& input,
                     const std::string& comment_begin,
                     const std::string& comment_end,
@@ -51,7 +51,7 @@ find_comments_block(const std::string& input,
     }
 }
 
-void
+inline void
 remove_comments_rests(std::string& input)
 {
     size_t pos = 0;
@@ -64,7 +64,7 @@ remove_comments_rests(std::string& input)
 
 }
 
-void
+inline void
 remove_comments_block(std::string& input,
                       const std::string& comment_begin,
                       const std::string& comment_end)
@@ -92,7 +92,7 @@ remove_comments_block(std::string& input,
     remove_comments_rests(input);
 }
 
-void
+inline void
 remove_newline_tabs_carrieg(std::string& input)
 {
     input.erase(std::remove_if(input.begin(), input.end(),
@@ -100,7 +100,7 @@ remove_newline_tabs_carrieg(std::string& input)
                 input.end());
 }
 
-std::vector<size_t>
+inline std::vector<size_t>
 cut_sub_strings(const std::string& input,
                 const std::string& separator)
 {
@@ -122,7 +122,7 @@ cut_sub_strings(const std::string& input,
      * @param func_name - name of function to find
      * @return if function with func_name found return function else ""
      */
-std::string
+inline std::string
 cut_function_kernel(const std::string& task_src, const std::string& func_name)
 {
     std::string task_formated;
@@ -158,7 +158,7 @@ namespace rewrite
 * find all appearances of: __kernelvoid or kernelvoid and replace with:
 * __kernel void or kernel void
 */
-size_t
+inline size_t
 pre_process_kernel_func(std::string &source) {
     size_t beg = 0;
     std::string tag = "__kernelvoid";
@@ -181,7 +181,7 @@ pre_process_kernel_func(std::string &source) {
 * Search for the _kernel void or kernel void in the source.
 * And cut from	the source a kernel function
 */
-std::string
+inline std::string
 cut_kernel_function(std::string &source) 
 {
     // Warning: 
@@ -227,7 +227,7 @@ cut_kernel_function(std::string &source)
     return target;
 }
 
-std::string
+inline std::string
 insert_global_size_guard_and_args(
     const std::string& source,
     const std::array < std::string, 3 > & global_size_args)
@@ -284,7 +284,7 @@ insert_global_size_guard_and_args(
 * search for the template: _kernel void ...{ or kernel void ...{
 * and insert the global_size_assertion
 */
-std::string
+inline std::string
 insert_global_size_guard(const std::string &source,
                          const std::array<size_t, 3> &global_sizes)
 {
@@ -334,7 +334,7 @@ insert_global_size_guard(const std::string &source,
     return target;
 }
 
-bool
+inline bool
 copy_include_headers(std::stringstream &out,
                                  const std::string &source)
 {
@@ -368,7 +368,7 @@ copy_include_headers(std::stringstream &out,
  * @param global_sizes
  * @return
  */
-std::string add_execution_guard_to_kernels(
+inline std::string add_execution_guard_to_kernels(
         const std::string &ocl_kernels,		
         const std::array<size_t, 3> &global_sizes)
 {
@@ -408,7 +408,7 @@ std::string add_execution_guard_to_kernels(
     return rewriten_oclkernel.str();
 }
 
-std::string add_execution_guard_to_kernels(
+inline std::string add_execution_guard_to_kernels(
     const std::string& ocl_kernels    )
 {
     if (ocl_kernels.empty())

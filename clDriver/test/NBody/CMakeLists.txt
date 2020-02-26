@@ -10,7 +10,7 @@ find_package(OpenMP REQUIRED)
 
 
 add_executable(${PROJECT_NAME} main.cpp)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 11)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} PRIVATE ../../lib)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCL_LIBRARIES})

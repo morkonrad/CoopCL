@@ -225,11 +225,7 @@ int call_floyd_warshall_naive(int argc, char** argv)
                               static_cast<size_t>(dim) };
 	
 	coopcl::clTask kernelfw3d;
-		device.build_task(kernelfw3d,{
-      static_cast<size_t>(num_nodes),
-       static_cast<size_t>(num_nodes),
-       static_cast<size_t>(dim) },
-		std::string(source), "fw");
+		device.build_task(kernelfw3d, std::string(source), "fw");
 
 	const int iter = 10;	
 	long acc_time = 0;	
@@ -368,13 +364,13 @@ int call_floyd_warshall_block(int argc, char** argv)
 
 	//create OpenCL kernels	
 	coopcl::clTask kernel1;
-	device.build_task(kernel1,{ (size_t)block_size, (size_t)block_size, 1 }, std::string(source), "floydwarshall_dia_block");
+	device.build_task(kernel1, std::string(source), "floydwarshall_dia_block");
 	coopcl::clTask kernel2;
-	device.build_task(kernel2,{ (size_t)block_size*num_blk_per_dim, (size_t)block_size, 1 }, std::string(source), "floydwarshall_strip_blocks_x");
+	device.build_task(kernel2, std::string(source), "floydwarshall_strip_blocks_x");
 	coopcl::clTask kernel3;
-	device.build_task(kernel3,{ (size_t)block_size, (size_t)block_size*num_blk_per_dim, 1 }, std::string(source), "floydwarshall_strip_blocks_y");
+	device.build_task(kernel3, std::string(source), "floydwarshall_strip_blocks_y");
 	coopcl::clTask kernel4;
-	device.build_task(kernel4,{ (size_t)block_size*num_blk_per_dim, (size_t)block_size*num_blk_per_dim, 1 }, std::string(source), "floydwarshall_remaining_blocks");
+	device.build_task(kernel4, std::string(source), "floydwarshall_remaining_blocks");
 	
 	long acc_time = 0;
 	const auto iter = 10;

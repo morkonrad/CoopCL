@@ -143,7 +143,7 @@ int main(int argc,char** argv)
 	ref_gold({ (size_t)M,(size_t)N,1 }, { 1,1,1 }, va, vb_ref,verbose);
 
 	coopcl::clTask task;
-	device.build_task(task,{ (size_t)(width),(size_t)(height),1 }, sobel_filter, "sobel_filter");
+	device.build_task(task, sobel_filter, "sobel_filter");
 	
 	header();
 

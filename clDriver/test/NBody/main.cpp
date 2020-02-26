@@ -264,9 +264,7 @@ int main()
 						h_newVelocity_ref);
 
 					coopcl::clTask task; 
-					device.build_task(task,
-					{ (size_t)(width),(size_t)(height),(size_t)(depth) }, 
-						nbody_sim, "nbody_sim");
+					device.build_task(task,nbody_sim, "nbody_sim");
 
 					std::cout << "------------------------------" << std::endl;
 					for (const auto offload : offloads)

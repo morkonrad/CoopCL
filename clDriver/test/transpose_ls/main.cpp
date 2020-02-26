@@ -89,6 +89,8 @@ int main()
 	generate_offload_range(offloads, step);	
 
     constexpr auto iter = 2;
+	coopcl::clTask task;
+	device.build_task(task, transpose, "transpose");
 
 	for (int testid = 0; testid < 1; testid++)
 	{
@@ -103,11 +105,6 @@ int main()
 					std::vector<float> h_output_ref(width*height, 0);					
 
 					auto d_input = device.alloc(h_input, true);
-
-					coopcl::clTask task;
-					device.build_task(task,
-					{ (size_t)(width),(size_t)(height),(size_t)(depth) },
-						transpose, "transpose");
 
 					ref_gold(/*device,task,*/
 					{ (size_t)width,(size_t)height,1 }, 

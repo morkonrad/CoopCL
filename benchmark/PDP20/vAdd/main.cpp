@@ -52,7 +52,7 @@ int main(int argc,char** argv)
 #endif
 
 	coopcl::clTask task_Add;
-	device.build_task(task_Add,{ (size_t)w,(size_t)h,1 }, tasks, "kAdd");
+	device.build_task(task_Add, tasks, "kAdd");
 
 	/*std::vector<float> offloads;
 	auto step = 0.1f;

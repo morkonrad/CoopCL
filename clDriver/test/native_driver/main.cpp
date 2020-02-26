@@ -116,7 +116,7 @@ int main()
                     va, vb, vc_ref, d, width, height);
 
 					coopcl::clTask task;  
-					device.build_task(task,{ (size_t)width,(size_t)height,(size_t)depth }, add_3d, "add_3d");
+					device.build_task(task, add_3d, "add_3d");
 
 					std::cout << "------------------------------" << std::endl;
 					for (const auto offload : offloads)

@@ -110,7 +110,7 @@ int main(int argc,char** argv)
 	ref_gold({ (size_t)M,(size_t)N,1 }, { 1,1,1 }, M, N, K, va, vb, vc_ref,verbose);
 
 	coopcl::clTask task;
-	device.build_task(task,{ (size_t)(M),(size_t)(N),(size_t)(1) }, sgemm, "sgemm");
+	device.build_task(task, sgemm, "sgemm");
 	
 	header();
 

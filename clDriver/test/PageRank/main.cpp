@@ -121,7 +121,7 @@ int main()
 					h_indices,h_newRanks_ref);
 
 					coopcl::clTask task;
-					device.build_task(task,{ size_t(width),size_t(height),size_t(depth) }, PageRank, "PageRank");
+					device.build_task(task, PageRank, "PageRank");
 
 					std::cout << "------------------------------" << std::endl;
 					for (const auto offload : offloads)

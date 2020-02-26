@@ -83,24 +83,23 @@ static int test_dag0(const size_t items)
 
 	//A = 10 
 	//B(A) = 11 >> B=A+1
-	//C(B) = 13 >> C=B+2	
-
+	//C(B) = 13 >> C=B+2		
 	coopcl::virtual_device device;
 
 	auto bA = device.alloc<int>(items,false);
 	auto bB = device.alloc<int>(items, false);
 	auto bC = device.alloc<int>(items, false);    
 
-	coopcl::clTask task_A;
-	device.build_task(task_A,{ items,1,1 }, taskA, "kA");
+	coopcl::clTask task_A;			
+	device.build_task(task_A,taskA, "kA");
 
 	coopcl::clTask task_B;
-	device.build_task(task_B,{ items,1,1 }, taskB, "kB");
-	task_B.dependence_list().push_back(&task_A);
+	device.build_task(task_B, taskB, "kB");
+	task_B.add_dependence(&task_A);
 
-	coopcl::clTask task_C;
-	device.build_task(task_C,{ items,1,1 }, taskC, "kC");
-	task_C.dependence_list().push_back(&task_B);	
+	coopcl::clTask task_C;	
+	device.build_task(task_C, taskC, "kC");
+	task_C.add_dependence(&task_B);
 
 	std::cout << "Execute ...\n";
     
@@ -155,25 +154,25 @@ static int test_dag1(const size_t items)
 	auto bE = device.alloc<int>(items, false);
 
 	coopcl::clTask task_A;
-	device.build_task(task_A,{ items,1,1 }, taskA, "kA");
+	device.build_task(task_A, taskA, "kA");
 
 	coopcl::clTask  task_B;
-	device.build_task(task_B,{ items,1,1 }, taskB, "kB");
-	task_B.dependence_list().push_back(&task_A);
+	device.build_task(task_B, taskB, "kB");
+	task_B.add_dependence(&task_A);
 
 	coopcl::clTask  task_C;
-	device.build_task(task_C,{ items,1,1 }, taskC, "kC");
-	task_C.dependence_list().push_back(&task_A);
+	device.build_task(task_C, taskC, "kC");
+	task_C.add_dependence(&task_A);
 
 	coopcl::clTask  task_D;
-	device.build_task(task_D,{ items,1,1 }, taskD, "kD");
-	task_D.dependence_list().push_back(&task_A);
+	device.build_task(task_D, taskD, "kD");
+	task_D.add_dependence(&task_A);
 
 	coopcl::clTask task_E;
-	device.build_task(task_E,{ items,1,1 }, taskE, "kE");
-	task_E.dependence_list().push_back(&task_B);
-	task_E.dependence_list().push_back(&task_C);
-	task_E.dependence_list().push_back(&task_D);
+	device.build_task(task_E, taskE, "kE");
+	task_E.add_dependence(&task_B);
+	task_E.add_dependence(&task_C);
+	task_E.add_dependence(&task_D);
 
 	std::cout << "Execute ...\n";
 
@@ -222,7 +221,6 @@ static int paper(const size_t items)
 	//B(A) = 11 >> B=A+1
 	//C(A) = 12 >> C=A+2
 	//D(B,C) = 23 >> D=B+C
-	
 
 	constexpr auto tasks = R"(
 kernel void kA(global int* A)                        
@@ -259,21 +257,21 @@ D[tid] = B[tid]+C[tid];
 	auto mC = device.alloc<int>(items);
 	auto mD = device.alloc<int>(items);
 
-	coopcl::clTask taskA;
-	device.build_task(taskA, { items, 1, 1 }, tasks, "kA");
+	coopcl::clTask taskA;	
+	device.build_task(taskA,  tasks, "kA");
 	
-	coopcl::clTask taskB;
-	device.build_task(taskB,{ items,1,1 }, tasks, "kB");
-	taskB.dependence_list().push_back(&taskA);
+	coopcl::clTask taskB;	
+	device.build_task(taskB, tasks, "kB");
+	taskB.add_dependence(&taskA);
 
-	coopcl::clTask taskC;
-	device.build_task(taskC,{ items,1,1 }, tasks, "kC");
-	taskC.dependence_list().push_back(&taskA);
+	coopcl::clTask taskC;	
+	device.build_task(taskC, tasks, "kC");
+	taskC.add_dependence(&taskA);
 
-	coopcl::clTask taskD;
-	device.build_task(taskD,{ items,1,1 }, tasks, "kD");
-	taskD.dependence_list().push_back(&taskB);
-	taskD.dependence_list().push_back(&taskC);
+	coopcl::clTask taskD;	
+	device.build_task(taskD, tasks, "kD");
+	taskD.add_dependence(&taskB);
+	taskD.add_dependence(&taskC);
 
 	const std::array<size_t, 3> ndr = { items,1,1 };
 	const std::array<size_t, 3> wgs = { 16,1,1 };
@@ -286,6 +284,7 @@ D[tid] = B[tid]+C[tid];
 		device.execute_async(taskC, 0.5f, ndr, wgs, mA, mC);
 		device.execute_async(taskD, 1.0f, ndr, wgs, mB, mC, mD);
 		taskD.wait();
+
 	}
 	
 	for (int i = 0;i < items;i++)

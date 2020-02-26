@@ -72,8 +72,7 @@ int main()
 		auto d_input = device.alloc(h_input, true);
 
 		coopcl::clTask task;
-		device.build_task(task,{ (size_t)(elements),(size_t)(1),(size_t)(1) },
-			atomics, "atomics_add");
+		device.build_task(task,atomics, "atomics_add");
 
 		ref_gold({ (size_t)elements,(size_t)1,1 },
 		{ 1,1,1 },h_input, h_output_ref);
