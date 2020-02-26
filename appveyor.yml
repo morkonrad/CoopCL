@@ -3,11 +3,9 @@ image:
 clone_folder: c:\projects\source
 build_script:
 - cmd: >-
-    mkdir build
-    cd build
-    
-    cmake c:\projects\source -G "Visual Studio 15"
-    
+    mkdir build 
+    cd build    
+    cmake c:\projects\source -G "Visual Studio 15"    
     cmake --build . --config "Debug"
 test_script:
 - cmd: ctest -C Debug
