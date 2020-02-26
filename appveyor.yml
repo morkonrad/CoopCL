@@ -4,7 +4,7 @@ clone_folder: c:\projects\source
 build_script:
 - cmd: mkdir build 
 - cmd: cd build    
-- cmd: cmake c:\projects\source -G "Visual Studio 15"    
+- cmd: cmake c:\projects\source -G "Visual Studio 15 Win64"    
 - cmd: cmake --build . --config "Debug"
 test_script:
 - cmd: ctest -C Debug
