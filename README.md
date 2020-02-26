@@ -164,7 +164,8 @@ The extension for NVIDIA Platforms and multi-GPU is in progress.
 
 References
 ------------
-Please cite: CoopCL: Cooperative Execution of OpenCL Programs on Heterogeneous CPU-GPU Platforms 
+Please cite: CoopCL: Cooperative Execution of OpenCL Programs on Heterogeneous CPU-GPU Platforms. 
+
 28th Euromicro International Conference on Parallel, Distributed and Network-based Processing
 PDP2020 (accepted for publication)
 
