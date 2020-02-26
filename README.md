@@ -162,3 +162,9 @@ The extension for NVIDIA Platforms and multi-GPU is in progress.
 | AMD	    | R5-2400GE | Vega-11 | 2639.5         | win64 | Notebook APU      |
 | AMD	    | R7-2700U  | Vega-10 | 2639.5         | win64 | Notebook APU      |
 
+References
+------------
+Please cite: CoopCL: Cooperative Execution of OpenCL Programs on Heterogeneous CPU-GPU Platforms 
+28th Euromicro International Conference on Parallel, Distributed and Network-based Processing
+PDP2020 (accepted for publication)
+
